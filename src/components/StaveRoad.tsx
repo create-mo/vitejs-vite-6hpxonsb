@@ -30,8 +30,8 @@ export const StaveRoad = ({ startX, startY, endX, endY, label }: Props) => {
   const midX = (startX + endX) / 2;
   const roadId = `road-${Math.floor(startX)}-${Math.floor(endY)}`;
 
-  // Центрирование стана
-  const staveTopY = (startY + endY) / 2 - 10; // -10 = половина высоты стана (20px)
+  // Центр стана ровно между startY и endY
+  const staveCenterY = (startY + endY) / 2;
 
   // Расчёт провисания арки (Cubic Bezier)
   const chord = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
@@ -50,7 +50,7 @@ export const StaveRoad = ({ startX, startY, endX, endY, label }: Props) => {
       // Кляксы строго внутри границ стана
       const noteLineIndex = (i + seed) % STAVE_LINES.length;
       const microOffset = (deterministicRandom(seed + i) - 0.5) * 2; // +/- 1px jitter
-      const noteY = staveTopY + STAVE_LINES[noteLineIndex] + microOffset;
+      const noteY = staveCenterY + STAVE_LINES[noteLineIndex] + microOffset;
 
       // Детерминистический размер
       const noteIndexForSize = deterministicRandom(seed + i);
@@ -71,8 +71,8 @@ export const StaveRoad = ({ startX, startY, endX, endY, label }: Props) => {
     return notes;
   }, [startX, startY, endX, endY, seed]); // Все зависимости!
 
-  // Cubic Bezier path с аркой
-  const pathD = `M ${startX} ${startY + sagitta} C ${midX} ${startY + sagitta}, ${midX} ${endY + sagitta}, ${endX} ${endY}`;
+  // Cubic Bezier path с аркой (симметричная)
+  const pathD = `M ${startX} ${startY + sagitta} C ${midX} ${startY + sagitta}, ${midX} ${endY + sagitta}, ${endX} ${endY + sagitta}`;
 
   return (
     <g className="stave-road">
