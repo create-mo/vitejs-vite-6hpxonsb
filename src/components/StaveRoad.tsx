@@ -72,7 +72,8 @@ export const StaveRoad = ({ startX, startY, endX, endY, label }: Props) => {
   }, [startX, startY, endX, endY, seed]); // Все зависимости!
 
   // Cubic Bezier path с аркой (симметричная)
-  const pathD = `M ${startX} ${startY + sagitta} C ${midX} ${startY + sagitta}, ${midX} ${endY + sagitta}, ${endX} ${endY + sagitta}`;
+  // Путь начинается/заканчивается в центрах композиторов, провисает вниз в середине
+  const pathD = `M ${startX} ${startY} C ${midX} ${staveCenterY + sagitta}, ${midX} ${staveCenterY + sagitta}, ${endX} ${endY}`;
 
   return (
     <g className="stave-road">
