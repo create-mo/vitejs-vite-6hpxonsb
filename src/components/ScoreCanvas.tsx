@@ -48,6 +48,7 @@ export const ScoreCanvas = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(0.6);
   const [cameraY, setCameraY] = useState(0);
+  const [cameraX, setCameraX] = useState(0);
   const [hoveredEra, setHoveredEra] = useState<Era | null>(null);
 
   const [selectedComposer, setSelectedComposer] = useState<ComposerNode | null>(null);
@@ -57,6 +58,11 @@ export const ScoreCanvas = () => {
     composer: string;
     era: Era;
   } | null>(null);
+
+  // Drag-pan состояние
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   const { playbackState, effect, setEffect, togglePlayPause, stop } = useAudioPlayer();
   const { composers: dbComposers, loading: dbLoading, error: dbError } = useComposers();
@@ -404,7 +410,25 @@ export const ScoreCanvas = () => {
       {/* WORLD */}
       <div
         ref={scrollRef}
-        style={{ width: '100%', height: '100%', overflowX: 'auto', overflowY: 'hidden', cursor: 'grab' }}
+        style={{ width: '100%', height: '100%', overflowX: 'auto', overflowY: 'hidden', cursor: isDragging ? 'grabbing' : 'grab' }}
+        onMouseDown={(e) => {
+          setIsDragging(true);
+          setDragStart({ x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y });
+        }}
+        onMouseMove={(e) => {
+          if (!isDragging) return;
+          const newOffsetX = e.clientX - dragStart.x;
+          const newOffsetY = e.clientY - dragStart.y;
+          setDragOffset({ x: newOffsetX, y: newOffsetY });
+          // Применяем смещение к скроллу (горизонтально)
+          if (scrollRef.current) {
+            scrollRef.current.scrollLeft = -newOffsetX;
+          }
+          // Применяем смещение к cameraY (вертикально)
+          setCameraY(newOffsetY / zoom);
+        }}
+        onMouseUp={() => setIsDragging(false)}
+        onMouseLeave={() => setIsDragging(false)}
       >
         <div style={{
           width: '10000px',
