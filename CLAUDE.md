@@ -85,11 +85,9 @@ Contemporary:   { attack: 0.003, decay: 0.03, sustain: 0.22, release: 0.12, peak
 - [x] **Measure accentuation** — +15% volume on first beat for phrasing
 - [x] **Removed effects UI** — no more thirds/arpeggio buttons, using clean 'none' effect
 - [x] **Phase 4 — Visual Polish** (2026-03-14):
-  - Composer life dates displayed under names
-  - Hover effects on composer circles (glow + scale)
-  - Road highlight on hover (golden glow, 2px stroke width)
-  - Era labels on roads (centered with semi-transparent background)
-  - Smooth transitions for all interactive elements
+  - Composer life dates displayed under names (серый текст)
+  - Hover effects on composer circles (glow + scale 1.12, smooth transitions)
+  - Simplified design, no extra overlays
 
 ### 🔧 LAYOUT PARAMETERS (Final)
 **File: `src/components/ScoreCanvas.tsx`**
