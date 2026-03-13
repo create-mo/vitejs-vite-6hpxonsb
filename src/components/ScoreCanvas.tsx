@@ -118,8 +118,13 @@ export const ScoreCanvas = () => {
 
   // Применяем smartYLayout если все Y значения кучей
   const uniqueYValues = new Set(rawComposers.map(c => c.y.toFixed(2)));
+  console.log('[SmartLayout] Unique Y values:', uniqueYValues.size, 'Values:', Array.from(uniqueYValues));
   if (uniqueYValues.size <= 2) {
+    console.log('[SmartLayout] Applying smartYLayout...');
     rawComposers = smartYLayout(rawComposers);
+    console.log('[SmartLayout] After layout, Y values:', rawComposers.map(c => `${c.label}=${c.y.toFixed(2)}`).slice(0, 10).join(', '));
+  } else {
+    console.log('[SmartLayout] Skipping - already have varied Y values');
   }
 
   // === SMART ROADS: строим сетку дорог (спины по эрам + мосты между ними) ===
@@ -155,8 +160,13 @@ export const ScoreCanvas = () => {
   };
 
   const totalPredecessors = rawComposers.reduce((s, c) => s + c.predecessors.length, 0);
+  console.log('[SmartRoads] Total predecessors:', totalPredecessors, '/', rawComposers.length, '=', (totalPredecessors / rawComposers.length).toFixed(2), '(threshold: 0.25)');
   if (totalPredecessors < rawComposers.length * 0.25) {
+    console.log('[SmartRoads] Applying smartRoadConnect...');
     rawComposers = smartRoadConnect(rawComposers);
+    console.log('[SmartRoads] After roads, sample predecessors:', rawComposers.slice(0, 5).map(c => `${c.label}: [${c.predecessors.join(',')}]`).join(' | '));
+  } else {
+    console.log('[SmartRoads] Skipping - enough predecessors already');
   }
 
   // Анализируем позиции композиторов для отладки перекрытий
