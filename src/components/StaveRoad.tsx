@@ -92,31 +92,14 @@ const buildOffsetPath = (
 export const StaveRoad = ({ startX, startY, endX, endY, label }: Props) => {
   const roadId = `road-${Math.floor(startX)}-${Math.floor(endY)}`;
 
-  // Более органичные контрольные точки для красивых кривых
-  // Дороги волнистые и естественные, как на старинных картах
+  // Простые, чистые кривые (S-образные)
+  // Контрольные точки на трети пути между стартом и концом
   const dx = endX - startX;
   const dy = endY - startY;
-  const distance = Math.sqrt(dx * dx + dy * dy);
 
-  // Боковое смещение для волнистости (как дороги в Римской империи)
-  // Даже короткие дороги имеют минимальную волнистость
-  const sideOffset = Math.max(20, distance * 0.2); // мин 20px волнистости
-  const controlInfluence = Math.max(0.3, distance * 0.35); // адаптивное влияние
-
-  // Нормаль к линии (перпендикуляр)
-  const perpX = -dy / distance;
-  const perpY = dx / distance;
-
-  // Контрольные точки со смещением для естественной волнистости
   const p0: Point = { x: startX, y: startY };
-  const p1: Point = {
-    x: startX + dx * controlInfluence + perpX * sideOffset,
-    y: startY + dy * controlInfluence + perpY * sideOffset
-  };
-  const p2: Point = {
-    x: endX - dx * controlInfluence - perpX * sideOffset,
-    y: endY - dy * controlInfluence - perpY * sideOffset
-  };
+  const p1: Point = { x: startX + dx * 0.33, y: startY + dy * 0.33 };
+  const p2: Point = { x: startX + dx * 0.67, y: startY + dy * 0.67 };
   const p3: Point = { x: endX, y: endY };
 
   // Generate SVG path strings for all 5 staff lines (offsets: -10, -5, 0, 5, 10 px)
