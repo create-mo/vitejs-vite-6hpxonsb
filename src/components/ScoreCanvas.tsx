@@ -65,6 +65,8 @@ export const ScoreCanvas = () => {
   rawComposers = smartCityLayout(rawComposers);
   rawComposers = smartRoadConnect(rawComposers);
 
+  const worldContainerRef = useRef<WorldContainer | null>(null);
+
   // Инициализация PixiJS
   useEffect(() => {
     if (!canvasContainerRef.current || pixi) return;
@@ -77,6 +79,7 @@ export const ScoreCanvas = () => {
 
       // Добавляем world container
       const world = new WorldContainer();
+      worldContainerRef.current = world;
       manager.getStage().addChild(world);
     };
 
@@ -86,12 +89,21 @@ export const ScoreCanvas = () => {
       if (pixiAppRef.current) {
         pixiAppRef.current.destroy();
         pixiAppRef.current = null;
+        worldContainerRef.current = null;
       }
     };
   }, [canvasContainerRef, pixi]);
 
   // Камера
   const camera = usePixiCamera(pixi);
+
+  // Обновляем рендер при изменении данных или zoom
+  useEffect(() => {
+    if (!worldContainerRef.current || rawComposers.length === 0) return;
+
+    // Обновляем все слои мира
+    worldContainerRef.current.update(rawComposers, camera.camera.scale);
+  }, [rawComposers, camera.camera.scale]);
 
   // Keyboard control
   useEffect(() => {
@@ -259,7 +271,11 @@ export const ScoreCanvas = () => {
                 boxShadow: isSelected ? '0 0 20px rgba(212, 175, 55, 0.5)' : 'none',
               }}
               onClick={() => {
-                setSelectedComposer(isSelected ? null : node);
+                const newSelected = isSelected ? null : node;
+                setSelectedComposer(newSelected);
+                if (worldContainerRef.current) {
+                  worldContainerRef.current.highlightComposer(newSelected?.id || null);
+                }
                 stop();
               }}
             >

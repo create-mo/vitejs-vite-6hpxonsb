@@ -1,61 +1,81 @@
 import * as PIXI from 'pixi.js';
 import { ComposerNode } from '../data/database';
 import { GRID_X, GRID_Y, HORIZON_Y } from '../utils/layout';
+import { EraLayer } from './EraLayer';
+import { StaveRoadLayer } from './StaveRoadLayer';
+import { ComposerLayer } from './ComposerLayer';
+import { ConnectionLayer } from './ConnectionLayer';
 
 /**
  * Главный контейнер мира, содержит все визуальные слои:
- * - Era backgrounds
- * - StaveRoads
- * - Composer nodes
- * - Connections
- * - Milestones
+ * - Era backgrounds (фоновые регионы эпох)
+ * - StaveRoads (дороги-станы между композиторами)
+ * - Connections (нити влияния)
+ * - Composer nodes (узлы композиторов с LOD системой)
  */
 export class WorldContainer extends PIXI.Container {
-  private eraLayer: PIXI.Container;
-  private staveRoadLayer: PIXI.Container;
-  private composerLayer: PIXI.Container;
-  private connectionLayer: PIXI.Container;
-  private milestoneLayer: PIXI.Container;
+  private eraLayer: EraLayer;
+  private staveRoadLayer: StaveRoadLayer;
+  private composerLayer: ComposerLayer;
+  private connectionLayer: ConnectionLayer;
 
   constructor() {
     super();
 
-    // Инициализируем слои (порядок: от фона к переднему плану)
-    this.eraLayer = new PIXI.Container();
+    // Инициализируем слои в порядке: от фона к переднему плану
+    this.eraLayer = new EraLayer();
     this.addChild(this.eraLayer);
 
-    this.staveRoadLayer = new PIXI.Container();
+    this.staveRoadLayer = new StaveRoadLayer();
     this.addChild(this.staveRoadLayer);
 
-    this.milestoneLayer = new PIXI.Container();
-    this.addChild(this.milestoneLayer);
-
-    this.connectionLayer = new PIXI.Container();
+    this.connectionLayer = new ConnectionLayer();
     this.addChild(this.connectionLayer);
 
-    this.composerLayer = new PIXI.Container();
+    this.composerLayer = new ComposerLayer();
     this.addChild(this.composerLayer);
   }
 
   // Геттеры для доступа к слоям
-  getEraLayer(): PIXI.Container {
+  getEraLayer(): EraLayer {
     return this.eraLayer;
   }
 
-  getStaveRoadLayer(): PIXI.Container {
+  getStaveRoadLayer(): StaveRoadLayer {
     return this.staveRoadLayer;
   }
 
-  getComposerLayer(): PIXI.Container {
+  getComposerLayer(): ComposerLayer {
     return this.composerLayer;
   }
 
-  getConnectionLayer(): PIXI.Container {
+  getConnectionLayer(): ConnectionLayer {
     return this.connectionLayer;
   }
 
-  getMilestoneLayer(): PIXI.Container {
-    return this.milestoneLayer;
+  /**
+   * Обновляет весь мир на основе данных композиторов
+   */
+  update(composers: ComposerNode[], zoom: number): void {
+    this.staveRoadLayer.updateRoads(composers);
+    this.composerLayer.updateComposers(composers);
+    this.connectionLayer.updateConnections(composers);
+    this.eraLayer.updateOpacityByZoom(zoom);
+    this.composerLayer.updateLODByZoom(zoom);
+  }
+
+  /**
+   * Выделяет композитора
+   */
+  highlightComposer(composerId: string | null): void {
+    this.composerLayer.highlightComposer(composerId);
+    if (composerId) {
+      this.connectionLayer.highlightComposerConnections(composerId,
+        // Получаем composers из стеков (временное решение, нужна рефакторинг)
+      );
+    } else {
+      // this.connectionLayer.clearHighlight(composers);
+    }
   }
 
   /**
