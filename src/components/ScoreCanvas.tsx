@@ -7,6 +7,7 @@ import { FloatingPieceCard } from './FloatingPieceCard';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { useComposers } from '../hooks/useComposers';
 import type { Era } from '../hooks/useAudioPlayer';
+import { ERA_REGIONS, ERA_DIVIDERS } from '../lib/eraMap';
 
 // ПАРАМЕТРЫ МИРА
 const GRID_X = 600;
@@ -47,6 +48,7 @@ export const ScoreCanvas = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(0.6);
   const [cameraY, setCameraY] = useState(0);
+  const [hoveredEra, setHoveredEra] = useState<Era | null>(null);
 
   const [selectedComposer, setSelectedComposer] = useState<ComposerNode | null>(null);
   const [playingPieceId, setPlayingPieceId] = useState<string | null>(null);
@@ -192,6 +194,71 @@ export const ScoreCanvas = () => {
     y: HORIZON_Y + node.y * GRID_Y,
   });
 
+  // === ОТРИСОВКА ФОНОВЫХ РЕГИОНОВ ЭПО́Х ===
+  const renderEraBackgrounds = () => {
+    return Object.values(ERA_REGIONS).map((era) => {
+      const x1 = era.bounds.x1 * GRID_X + 200;
+      const x2 = era.bounds.x2 * GRID_X + 200;
+      const y1 = HORIZON_Y + era.bounds.y1 * GRID_Y;
+      const y2 = HORIZON_Y + era.bounds.y2 * GRID_Y;
+      const width = x2 - x1;
+      const height = y2 - y1;
+
+      return (
+        <g key={`era-bg-${era.name}`}>
+          {/* Цветная область эпохи */}
+          <rect
+            x={x1}
+            y={y1}
+            width={width}
+            height={height}
+            fill={era.color}
+            opacity={hoveredEra === era.name ? era.opacityBg + 0.05 : era.opacityBg}
+            stroke={hoveredEra === era.name ? era.accentColor : 'none'}
+            strokeWidth={hoveredEra === era.name ? 2 : 0}
+            style={{ transition: 'opacity 0.2s ease' }}
+          />
+        </g>
+      );
+    });
+  };
+
+  // === ОТРИСОВКА РАЗДЕЛИТЕЛЕЙ МЕЖДУ ЭПОХАМИ ===
+  const renderEraDividers = () => {
+    return ERA_DIVIDERS.map((divider) => {
+      const x = divider.x * GRID_X + 200;
+      const y1 = HORIZON_Y - 250 * GRID_Y;
+      const y2 = HORIZON_Y + 250 * GRID_Y;
+
+      return (
+        <g key={`divider-${divider.x}`}>
+          {/* Штриховая линия */}
+          <line
+            x1={x}
+            y1={y1}
+            x2={x}
+            y2={y2}
+            stroke="#ccc"
+            strokeWidth={1}
+            strokeDasharray="5,5"
+            opacity={0.5}
+          />
+          {/* Год */}
+          <text
+            x={x}
+            y={HORIZON_Y + 20}
+            textAnchor="middle"
+            fontSize="11"
+            fill="#999"
+            fontWeight="bold"
+          >
+            {divider.label}
+          </text>
+        </g>
+      );
+    });
+  };
+
   const renderRoads = () =>
     rawComposers.map((node) => {
       const start = getNodePos(node);
@@ -220,6 +287,13 @@ export const ScoreCanvas = () => {
       fontFamily: 'Inter, sans-serif',
       overflow: 'hidden',
     }}>
+      {/* CSS анимация для контекстных подсказок */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translate(-50%, calc(-50% - 10px)); }
+          to { opacity: 1; transform: translate(-50%, -50%); }
+        }
+      `}</style>
       {/* FULL SCREEN MODAL */}
       {fullScreenPiece && (
         <FullScreenScore
@@ -237,7 +311,7 @@ export const ScoreCanvas = () => {
 
       {/* HUD */}
       <div style={{ position: 'fixed', top: 20, left: 30, zIndex: 100, pointerEvents: 'none' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: '900', margin: 0 }}>TIMELINE</h1>
+        <h1 style={{ fontSize: '28px', fontWeight: '900', margin: 0 }}>🗺️ HISTORICAL MAP</h1>
         {dbLoading && (
           <div style={{ fontSize: '11px', color: '#999', marginTop: '4px', letterSpacing: '1px' }}>
             загрузка из Supabase...
@@ -282,8 +356,68 @@ export const ScoreCanvas = () => {
             width: '100%', height: '100%',
             pointerEvents: 'none',
           }}>
+            {/* СЛОЙ 1: Фоновые регионы эпох */}
+            {renderEraBackgrounds()}
+
+            {/* СЛОЙ 2: Разделители между эпохами и годы */}
+            {renderEraDividers()}
+
+            {/* СЛОЙ 3: Дороги между композиторами */}
             {renderRoads()}
           </svg>
+
+          {/* СЛОЙ: Интерактивные области эпох (для наведения и контекста) */}
+          {Object.values(ERA_REGIONS).map((era) => {
+            const x1 = era.bounds.x1 * GRID_X + 200;
+            const x2 = era.bounds.x2 * GRID_X + 200;
+            const y1 = HORIZON_Y + era.bounds.y1 * GRID_Y;
+            const y2 = HORIZON_Y + era.bounds.y2 * GRID_Y;
+            const width = x2 - x1;
+            const height = y2 - y1;
+
+            return (
+              <div
+                key={`era-interactive-${era.name}`}
+                onMouseEnter={() => setHoveredEra(era.name)}
+                onMouseLeave={() => setHoveredEra(null)}
+                style={{
+                  position: 'absolute',
+                  left: x1,
+                  top: y1,
+                  width: width,
+                  height: height,
+                  cursor: 'pointer',
+                  zIndex: 5,
+                }}
+              >
+                {/* Небольшой отступ для показа контекста */}
+                {hoveredEra === era.name && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      background: 'rgba(0, 0, 0, 0.75)',
+                      color: '#fff',
+                      padding: '12px 20px',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      textAlign: 'center',
+                      whiteSpace: 'nowrap',
+                      pointerEvents: 'none',
+                      zIndex: 101,
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                      animation: 'fadeIn 0.2s ease',
+                    }}
+                  >
+                    {era.historicalContext}
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           {rawComposers.map((node) => {
             const pos = getNodePos(node);
