@@ -62,7 +62,47 @@ export const ScoreCanvas = () => {
   console.log('[ScoreCanvas] Rendering. dbLoading:', dbLoading, 'dbComposers:', dbComposers.length, 'error:', dbError);
 
   // Используем Supabase если загрузилось, иначе локальную базу
-  const rawComposers = dbLoading || dbComposers.length === 0 ? DATABASE : dbComposers;
+  let rawComposers = dbLoading || dbComposers.length === 0 ? DATABASE : dbComposers;
+
+  // === АВТО-SPACER: распределяем композиторов по вертикали если они кучей ===
+  const autoSpace = (composers: ComposerNode[]): ComposerNode[] => {
+    // Проверяем, все ли в одной точке (y ≈ 0)
+    const uniqueYValues = new Set(composers.map(c => c.y.toFixed(2)));
+    if (uniqueYValues.size <= 2) {
+      // Все композиторы примерно в одной точке по Y - нужно spacer
+      const sorted = [...composers].sort((a, b) => a.x - b.x);
+      const ERA_ORDER = ['Baroque', 'Classical', 'Romantic', '20th Century', 'Contemporary'];
+
+      return sorted.map((c) => {
+        const eraIdx = ERA_ORDER.indexOf(c.era);
+        // Распределяем по Y в зависимости от эры: Baroque вверху, Contemporary внизу
+        const yOffset = (eraIdx / (ERA_ORDER.length - 1)) * 1.8 - 0.9; // от -0.9 до 0.9
+        return { ...c, y: yOffset };
+      });
+    }
+    return composers;
+  };
+
+  rawComposers = autoSpace(rawComposers);
+
+  // === АВТО-ROADS: если почти нет дорог, связываем композиторов по chronology ===
+  const autoConnect = (composers: ComposerNode[]): ComposerNode[] => {
+    const totalPredecessors = composers.reduce((sum, c) => sum + c.predecessors.length, 0);
+    // Если <20% композиторов имеют predecessors, добавляем авто-связи
+    if (totalPredecessors < composers.length * 0.2) {
+      const sorted = [...composers].sort((a, b) => a.x - b.x);
+      return sorted.map((c, idx) => {
+        // Если нет predecessors, связываем с предыдущим по хронологии
+        if (c.predecessors.length === 0 && idx > 0) {
+          return { ...c, predecessors: [sorted[idx - 1].id] };
+        }
+        return c;
+      });
+    }
+    return composers;
+  };
+
+  rawComposers = autoConnect(rawComposers);
 
   // Анализируем позиции композиторов для отладки перекрытий
   useEffect(() => {
