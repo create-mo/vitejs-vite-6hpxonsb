@@ -12,7 +12,7 @@ export interface ComposerNode {
   id: string;
   label: string;
   era: 'Baroque' | 'Classical' | 'Romantic' | '20th Century' | 'Contemporary';
-  lifeDates: string;
+  life_dates: string;
   image: string;
   x: number; // Горизонтальная позиция (время)
   y: number; // Вертикальное отклонение от центра (0 - центр)
@@ -28,7 +28,7 @@ export const DATABASE: ComposerNode[] = [
     id: 'bach',
     label: 'J.S. Bach',
     era: 'Baroque',
-    lifeDates: '1685–1750',
+    life_dates: '1685–1750',
     image: `${IMG_BASE}/6/6a/Johann_Sebastian_Bach.jpg`,
     x: 0,
     y: 0,
@@ -57,7 +57,7 @@ export const DATABASE: ComposerNode[] = [
     id: 'vivaldi',
     label: 'A. Vivaldi',
     era: 'Baroque',
-    lifeDates: '1678–1741',
+    life_dates: '1678–1741',
     image: `${IMG_BASE}/b/bd/Vivaldi.jpg`,
     x: 0.5,
     y: -1.2,
@@ -104,7 +104,7 @@ export const DATABASE: ComposerNode[] = [
     id: 'mozart',
     label: 'W.A. Mozart',
     era: 'Classical',
-    lifeDates: '1756–1791',
+    life_dates: '1756–1791',
     image: `${IMG_BASE}/1/1e/Wolfgang-amadeus-mozart_1.jpg`,
     x: 3.5,
     y: 0.8,
@@ -151,7 +151,7 @@ export const DATABASE: ComposerNode[] = [
     id: 'beethoven',
     label: 'L.v. Beethoven',
     era: 'Romantic',
-    lifeDates: '1770–1827',
+    life_dates: '1770–1827',
     image: `${IMG_BASE}/6/6f/Beethoven.jpg`,
     x: 6,
     y: 0.4,
@@ -196,7 +196,7 @@ export const DATABASE: ComposerNode[] = [
     id: 'tchaikovsky',
     label: 'P.I. Tchaikovsky',
     era: 'Romantic',
-    lifeDates: '1840–1893',
+    life_dates: '1840–1893',
     image: `${IMG_BASE}/1/15/Pyotr_Ilyich_Tchaikovsky_late_portrait.jpg`,
     x: 8,
     y: -1.0,
@@ -231,7 +231,7 @@ export const DATABASE: ComposerNode[] = [
     id: 'debussy',
     label: 'C. Debussy',
     era: '20th Century',
-    lifeDates: '1862–1918',
+    life_dates: '1862–1918',
     image: `${IMG_BASE}/4/48/Claude_Debussy_atelier_Nadar.jpg`,
     x: 9.5,
     y: 0.7,
@@ -264,7 +264,7 @@ export const DATABASE: ComposerNode[] = [
     id: 'stravinsky',
     label: 'I. Stravinsky',
     era: '20th Century',
-    lifeDates: '1882–1971',
+    life_dates: '1882–1971',
     image: `${IMG_BASE}/6/6c/Igor_Stravinsky_LOC_32392u.jpg`,
     x: 11,
     y: -0.8,
@@ -289,7 +289,7 @@ export const DATABASE: ComposerNode[] = [
     id: 'reich',
     label: 'Steve Reich',
     era: 'Contemporary',
-    lifeDates: '1936–',
+    life_dates: '1936–',
     image: `${IMG_BASE}/0/03/Steve_Reich_New_York_City_1987.jpg`,
     x: 13,
     y: 0.6,
