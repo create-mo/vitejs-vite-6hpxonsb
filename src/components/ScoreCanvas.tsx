@@ -66,45 +66,98 @@ export const ScoreCanvas = () => {
   // Используем Supabase если загрузилось, иначе локальную базу
   let rawComposers = dbLoading || dbComposers.length === 0 ? DATABASE : dbComposers;
 
-  // === АВТО-SPACER: распределяем композиторов по вертикали если они кучей ===
-  const autoSpace = (composers: ComposerNode[]): ComposerNode[] => {
-    // Проверяем, все ли в одной точке (y ≈ 0)
-    const uniqueYValues = new Set(composers.map(c => c.y.toFixed(2)));
-    if (uniqueYValues.size <= 2) {
-      // Все композиторы примерно в одной точке по Y - нужно spacer
-      const sorted = [...composers].sort((a, b) => a.x - b.x);
-      const ERA_ORDER = ['Baroque', 'Classical', 'Romantic', '20th Century', 'Contemporary'];
-
-      return sorted.map((c) => {
-        const eraIdx = ERA_ORDER.indexOf(c.era);
-        // Распределяем по Y в зависимости от эры: Baroque вверху, Contemporary внизу
-        const yOffset = (eraIdx / (ERA_ORDER.length - 1)) * 1.8 - 0.9; // от -0.9 до 0.9
-        return { ...c, y: yOffset };
-      });
-    }
-    return composers;
+  // === SMART LAYOUT: распределяем композиторов с умной группировкой ===
+  const ERA_ORDER = ['Baroque', 'Classical', 'Romantic', '20th Century', 'Contemporary'];
+  const ERA_Y_CENTER: Record<string, number> = {
+    'Baroque': -0.7,
+    'Classical': -0.35,
+    'Romantic': 0,
+    '20th Century': 0.35,
+    'Contemporary': 0.7,
   };
+  const CLUSTER_THRESHOLD = 0.4; // X units (~240px): композиторы "одновременны"
+  const CLUSTER_STEP = 0.4;      // Y шаг между стопками
 
-  rawComposers = autoSpace(rawComposers);
+  const smartYLayout = (composers: ComposerNode[]): ComposerNode[] => {
+    const result: ComposerNode[] = [];
 
-  // === АВТО-ROADS: если почти нет дорог, связываем композиторов по chronology ===
-  const autoConnect = (composers: ComposerNode[]): ComposerNode[] => {
-    const totalPredecessors = composers.reduce((sum, c) => sum + c.predecessors.length, 0);
-    // Если <20% композиторов имеют predecessors, добавляем авто-связи
-    if (totalPredecessors < composers.length * 0.2) {
-      const sorted = [...composers].sort((a, b) => a.x - b.x);
-      return sorted.map((c, idx) => {
-        // Если нет predecessors, связываем с предыдущим по хронологии
-        if (c.predecessors.length === 0 && idx > 0) {
-          return { ...c, predecessors: [sorted[idx - 1].id] };
+    for (const era of ERA_ORDER) {
+      const eraComps = composers.filter(c => c.era === era).sort((a, b) => a.x - b.x);
+      if (!eraComps.length) continue;
+      const baseY = ERA_Y_CENTER[era] ?? 0;
+
+      // Группируем композиторов одной эры в кластеры (синхронные)
+      const clusters: ComposerNode[][] = [];
+      let current: ComposerNode[] = [eraComps[0]];
+      for (let i = 1; i < eraComps.length; i++) {
+        if (eraComps[i].x - eraComps[i - 1].x < CLUSTER_THRESHOLD) {
+          current.push(eraComps[i]);
+        } else {
+          clusters.push(current);
+          current = [eraComps[i]];
         }
-        return c;
-      });
+      }
+      clusters.push(current);
+
+      // Назначаем стагнированные Y внутри каждого кластера
+      for (const cluster of clusters) {
+        const n = cluster.length;
+        cluster.forEach((c, i) => {
+          const offset = (i - (n - 1) / 2) * CLUSTER_STEP;
+          const clampedOffset = Math.max(-0.8, Math.min(0.8, offset));
+          result.push({ ...c, y: baseY + clampedOffset });
+        });
+      }
     }
-    return composers;
+
+    // Fallback для композиторов с неизвестной эрой
+    const handled = new Set(result.map(c => c.id));
+    composers.filter(c => !handled.has(c.id)).forEach(c => result.push(c));
+    return result;
   };
 
-  rawComposers = autoConnect(rawComposers);
+  // Применяем smartYLayout если все Y значения кучей
+  const uniqueYValues = new Set(rawComposers.map(c => c.y.toFixed(2)));
+  if (uniqueYValues.size <= 2) {
+    rawComposers = smartYLayout(rawComposers);
+  }
+
+  // === SMART ROADS: строим сетку дорог (спины по эрам + мосты между ними) ===
+  const smartRoadConnect = (composers: ComposerNode[]): ComposerNode[] => {
+    const totalPreds = composers.reduce((s, c) => s + c.predecessors.length, 0);
+    if (totalPreds >= composers.length * 0.25) return composers; // достаточно связей
+
+    const sorted = [...composers].sort((a, b) => a.x - b.x);
+
+    return sorted.map((c) => {
+      if (c.predecessors.length > 0) return c;
+
+      const preds: string[] = [];
+
+      // 1. Спина эры: найти ближайшего предшественника в одной эре (по X слева)
+      const sameEra = sorted.filter(c2 => c2.era === c.era && c2.x < c.x);
+      if (sameEra.length > 0) {
+        preds.push(sameEra[sameEra.length - 1].id); // самый близкий слева
+      }
+
+      // 2. Мост между эрами: если первый в эре, связать с последним композитором предыдущей эры
+      const eraIdx = ERA_ORDER.indexOf(c.era);
+      if (eraIdx > 0 && sameEra.length === 0) {
+        const prevEra = ERA_ORDER[eraIdx - 1];
+        const prevEraComps = sorted.filter(c2 => c2.era === prevEra);
+        if (prevEraComps.length > 0) {
+          preds.push(prevEraComps[prevEraComps.length - 1].id);
+        }
+      }
+
+      return preds.length > 0 ? { ...c, predecessors: preds } : c;
+    });
+  };
+
+  const totalPredecessors = rawComposers.reduce((s, c) => s + c.predecessors.length, 0);
+  if (totalPredecessors < rawComposers.length * 0.25) {
+    rawComposers = smartRoadConnect(rawComposers);
+  }
 
   // Анализируем позиции композиторов для отладки перекрытий
   useEffect(() => {
