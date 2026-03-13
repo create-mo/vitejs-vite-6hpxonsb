@@ -17,19 +17,36 @@ interface RoadSegment {
  */
 export class StaveRoadLayer extends PIXI.Container {
   private graphics: PIXI.Graphics;
+  private graphicsHover: PIXI.Graphics;
   private noteSprites: PIXI.Container;
+  private labels: PIXI.Container;
   private roads: RoadSegment[] = [];
+  private hoveredRoadIndex: number | null = null;
 
   constructor() {
     super();
 
-    // Графика для линий станов
+    // Графика для линий станов (основной слой)
     this.graphics = new PIXI.Graphics();
     this.addChild(this.graphics);
+
+    // Графика для подсветки при наведении (поверх основного)
+    this.graphicsHover = new PIXI.Graphics();
+    this.addChild(this.graphicsHover);
 
     // Контейнер для нотных точек (для возможности использовать ParticleContainer в будущем)
     this.noteSprites = new PIXI.Container();
     this.addChild(this.noteSprites);
+
+    // Контейнер для лейблов эр
+    this.labels = new PIXI.Container();
+    this.addChild(this.labels);
+  }
+
+  setHoveredRoad(index: number | null): void {
+    if (this.hoveredRoadIndex === index) return;
+    this.hoveredRoadIndex = index;
+    this.redrawHoverLayer();
   }
 
   /**
@@ -62,17 +79,58 @@ export class StaveRoadLayer extends PIXI.Container {
    */
   private redraw(): void {
     this.graphics.clear();
+    this.graphicsHover.clear();
     this.noteSprites.removeChildren();
+    this.labels.removeChildren();
 
-    this.roads.forEach((road) => {
-      this.drawStaveRoad(road);
+    this.roads.forEach((road, idx) => {
+      this.drawStaveRoad(road, idx === this.hoveredRoadIndex);
+      this.addEraLabel(road);
     });
+  }
+
+  /**
+   * Перерисовывает слой подсветки при наведении
+   */
+  private redrawHoverLayer(): void {
+    this.graphicsHover.clear();
+
+    if (this.hoveredRoadIndex !== null && this.hoveredRoadIndex < this.roads.length) {
+      const road = this.roads[this.hoveredRoadIndex];
+      const { startX, startY, endX, endY } = road;
+
+      // Вычисляем Bezier кривую (S-curve)
+      const controlX1 = startX + (endX - startX) * 0.33;
+      const controlY1 = startY;
+      const controlX2 = startX + (endX - startX) * 0.67;
+      const controlY2 = endY;
+
+      // 5 линий станов параллельно кривой (смещены ±10, ±5, 0 px)
+      const staffOffsets = [-10, -5, 0, 5, 10];
+      const staffColor = 0xd4af37; // золотой
+      const staffAlpha = 0.8; // ярче при наведении
+
+      staffOffsets.forEach((offset) => {
+        // Рисуем Bezier кривую с смещением
+        const points = this.getBezierCurvePoints(startX, startY + offset, controlX1, controlY1 + offset, controlX2, controlY2 + offset, endX, endY + offset, 20);
+
+        if (points.length > 1) {
+          for (let i = 0; i < points.length - 1; i++) {
+            const p1 = points[i];
+            const p2 = points[i + 1];
+            this.graphicsHover.moveTo(p1.x, p1.y);
+            this.graphicsHover.lineTo(p2.x, p2.y);
+            this.graphicsHover.stroke({ color: staffColor, width: 2, alpha: staffAlpha });
+          }
+        }
+      });
+    }
   }
 
   /**
    * Рисует одну дорогу-стан (5 параллельных линий + нотки)
    */
-  private drawStaveRoad(road: RoadSegment): void {
+  private drawStaveRoad(road: RoadSegment, isHovered: boolean = false): void {
     const { startX, startY, endX, endY } = road;
 
     // Вычисляем Bezier кривую (S-curve)
@@ -84,7 +142,7 @@ export class StaveRoadLayer extends PIXI.Container {
     // 5 линий станов параллельно кривой (смещены ±10, ±5, 0 px)
     const staffOffsets = [-10, -5, 0, 5, 10];
     const staffColor = 0xaaaaaa; // серый
-    const staffAlpha = 0.4;
+    const staffAlpha = isHovered ? 0.2 : 0.4; // затемняем при наведении на другую дорогу
 
     staffOffsets.forEach((offset) => {
       // Рисуем Bezier кривую с смещением
@@ -163,5 +221,40 @@ export class StaveRoadLayer extends PIXI.Container {
 
       this.noteSprites.addChild(dot);
     }
+  }
+
+  /**
+   * Добавляет лейбл эры в середину дороги
+   */
+  private addEraLabel(road: RoadSegment): void {
+    const { startX, startY, endX, endY, endComposer } = road;
+
+    // Позиция в середине дороги
+    const midX = (startX + endX) / 2;
+    const midY = (startY + endY) / 2;
+
+    // Создаем текстовый лейбл
+    const text = new PIXI.Text({
+      text: endComposer.era,
+      style: {
+        fontFamily: 'SF Pro Display, Roboto, sans-serif',
+        fontSize: 11,
+        fontWeight: '600',
+        fill: '#d4af37',
+        alpha: 0.6,
+      },
+    });
+
+    text.position.set(midX, midY - 15);
+    text.anchor.set(0.5, 0.5);
+
+    // Добавляем фоновый прямоугольник для читаемости
+    const bg = new PIXI.Graphics();
+    bg.rect(-text.width / 2 - 4, -text.height / 2 - 2, text.width + 8, text.height + 4);
+    bg.fill({ color: 0x1a1a1a, alpha: 0.7 });
+    bg.position.set(midX, midY - 15);
+
+    this.labels.addChild(bg);
+    this.labels.addChild(text);
   }
 }

@@ -56,6 +56,7 @@ export const ScoreCanvas = () => {
   } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [hoveredComposerId, setHoveredComposerId] = useState<string | null>(null);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const searchEffectRef = useRef<SearchEffect | null>(null);
 
@@ -355,8 +356,13 @@ export const ScoreCanvas = () => {
                 border: isSelected ? '3px solid #d4af37' : '1px solid #444',
                 background: '#1a1a1a',
                 cursor: 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: isSelected ? '0 0 20px rgba(212, 175, 55, 0.5)' : 'none',
+                transition: 'all 0.2s ease',
+                boxShadow: isSelected
+                  ? '0 0 20px rgba(212, 175, 55, 0.5)'
+                  : hoveredComposerId === node.id
+                  ? '0 0 12px rgba(212, 175, 55, 0.3)'
+                  : 'none',
+                transform: hoveredComposerId === node.id ? 'scale(1.12)' : 'scale(1)',
               }}
               onClick={() => {
                 const newSelected = isSelected ? null : node;
@@ -366,11 +372,13 @@ export const ScoreCanvas = () => {
                 }
                 stop();
               }}
+              onMouseEnter={() => setHoveredComposerId(node.id)}
+              onMouseLeave={() => setHoveredComposerId(null)}
             >
               <AsyncImage src={node.image} alt={node.label} />
             </div>
 
-            {/* Composer Name */}
+            {/* Composer Name + Life Dates */}
             <div
               style={{
                 marginTop: '8px',
@@ -385,6 +393,22 @@ export const ScoreCanvas = () => {
             >
               {node.label}
             </div>
+            {node.life_dates && (
+              <div
+                style={{
+                  marginTop: '4px',
+                  fontSize: '10px',
+                  fontWeight: '400',
+                  textAlign: 'center',
+                  color: '#888',
+                  background: 'rgba(10, 10, 10, 0.6)',
+                  padding: '2px 6px',
+                  borderRadius: '3px',
+                }}
+              >
+                {node.life_dates}
+              </div>
+            )}
 
             {/* Floating Piece Cards */}
             {isSelected && (

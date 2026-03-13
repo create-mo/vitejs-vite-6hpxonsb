@@ -79,6 +79,13 @@ export class WorldContainer extends PIXI.Container {
   }
 
   /**
+   * Устанавливает подсвеченную дорогу при наведении
+   */
+  setHoveredRoad(roadIndex: number | null): void {
+    this.staveRoadLayer.setHoveredRoad(roadIndex);
+  }
+
+  /**
    * Получить мировую координату для композитора
    */
   static getWorldPos(node: ComposerNode): { x: number; y: number } {

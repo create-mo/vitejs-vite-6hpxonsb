@@ -84,6 +84,12 @@ Contemporary:   { attack: 0.003, decay: 0.03, sustain: 0.22, release: 0.12, peak
 - [x] **Dynamic reverb** — era-dependent delay echo (Baroque: dry, Romantic: lush)
 - [x] **Measure accentuation** — +15% volume on first beat for phrasing
 - [x] **Removed effects UI** — no more thirds/arpeggio buttons, using clean 'none' effect
+- [x] **Phase 4 — Visual Polish** (2026-03-14):
+  - Composer life dates displayed under names
+  - Hover effects on composer circles (glow + scale)
+  - Road highlight on hover (golden glow, 2px stroke width)
+  - Era labels on roads (centered with semi-transparent background)
+  - Smooth transitions for all interactive elements
 
 ### 🔧 LAYOUT PARAMETERS (Final)
 **File: `src/components/ScoreCanvas.tsx`**
@@ -116,8 +122,7 @@ const CLUSTER_STEP = 0.4;      // Vertical spacing in cluster
 ### 📋 NEXT TASKS (optional enhancements)
 1. **Music notation pagination** — split long pieces across pages or implement scrollable staves
 2. **Mobile responsiveness** — touch drag, viewport scaling, fullscreen on small devices
-3. **Visual polish** — road hover animations, composer birth/death year labels, era tooltips
-4. **Advanced audio** — polyphony (multiple note layers), legato pedal effect, humanization
+3. **Advanced audio** — polyphony (multiple note layers), legato pedal effect, humanization
 
 ## Note data population
 
