@@ -3,6 +3,7 @@ import { DATABASE, type ComposerNode, type MusicPiece } from '../data/database';
 import { VexScore } from './VexScore';
 import { FullScreenScore } from './FullScreenScore';
 import { StaveRoad } from './StaveRoad';
+import { FloatingPieceCard } from './FloatingPieceCard';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { useComposers } from '../hooks/useComposers';
 import type { Era } from '../hooks/useAudioPlayer';
@@ -47,8 +48,8 @@ export const ScoreCanvas = () => {
   const [zoom, setZoom] = useState(0.6);
   const [cameraY, setCameraY] = useState(0);
 
-  const [activeNode, setActiveNode] = useState<ComposerNode | null>(null);
-  const [activePieceIndex, setActivePieceIndex] = useState(0);
+  const [selectedComposer, setSelectedComposer] = useState<ComposerNode | null>(null);
+  const [playingPieceId, setPlayingPieceId] = useState<string | null>(null);
   const [fullScreenPiece, setFullScreenPiece] = useState<{
     piece: MusicPiece;
     composer: string;
@@ -96,9 +97,23 @@ export const ScoreCanvas = () => {
     }
   }, [rawComposers]);
 
+  // Центрируем камеру на конкретном композиторе
+  const centerOnComposer = (composer: ComposerNode) => {
+    const screenY = HORIZON_Y + composer.y * GRID_Y;
+    const screenCenterOffset = window.innerHeight / 2 / zoom;
+    setCameraY(-(screenY) + screenCenterOffset);
+  };
+
   // === СЛЕДЯЩАЯ КАМЕРА ===
   const handleScroll = () => {
     if (!scrollRef.current) return;
+
+    // Если выбран композитор, центрируем на нём
+    if (selectedComposer) {
+      centerOnComposer(selectedComposer);
+      return;
+    }
+
     const scrollLeft = scrollRef.current.scrollLeft;
     const viewportCenter = scrollLeft + window.innerWidth / 2;
     const mapX = (viewportCenter - 200) / (GRID_X * zoom);
@@ -116,7 +131,6 @@ export const ScoreCanvas = () => {
 
     const t = Math.max(0, Math.min(1, (mapX - leftNode.x) / (rightNode.x - leftNode.x)));
     const targetY = (1 - t) * leftNode.y + t * rightNode.y;
-    // Центрируем viewport вертикально: вычитаем HORIZON_Y + расчитанное смещение, плюс половину высоты экрана
     const screenCenterOffset = window.innerHeight / 2 / zoom;
     setCameraY(-(HORIZON_Y + targetY * GRID_Y) + screenCenterOffset);
   };
@@ -128,7 +142,7 @@ export const ScoreCanvas = () => {
       handleScroll();
       return () => el.removeEventListener('scroll', handleScroll);
     }
-  }, [zoom, rawComposers.length]); // Пересчитываем при загрузке композиторов
+  }, [zoom, rawComposers.length, selectedComposer]); // Пересчитываем при выборе композитора
 
   // suppress unused warning for useLayoutEffect (kept for future DOM measurements)
   void useLayoutEffect;
@@ -180,124 +194,6 @@ export const ScoreCanvas = () => {
         />
       )}
 
-      {/* COMPOSER CARD */}
-      {activeNode && (
-        <>
-          <div
-            style={{
-              position: 'fixed', inset: 0,
-              background: 'rgba(255,255,255,0.7)',
-              zIndex: 190, backdropFilter: 'blur(5px)',
-            }}
-            onClick={() => { setActiveNode(null); stop(); }}
-          />
-          <div style={{
-            position: 'fixed',
-            top: '50%', left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: 'min(500px, 90vw)',
-            background: '#fff',
-            border: '1px solid #000',
-            boxShadow: '0 30px 60px rgba(0,0,0,0.1)',
-            zIndex: 200,
-            display: 'flex',
-            flexDirection: 'column',
-          }}>
-            {/* Заголовок */}
-            <div style={{ display: 'flex', borderBottom: '1px solid #eee' }}>
-              <div style={{ width: '120px', height: '140px' }}>
-                <AsyncImage src={activeNode.image} alt={activeNode.label} />
-              </div>
-              <div style={{
-                flex: 1, padding: '20px',
-                display: 'flex', flexDirection: 'column', justifyContent: 'center',
-              }}>
-                <div style={{ fontSize: '10px', textTransform: 'uppercase' }}>{activeNode.era}</div>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', fontFamily: 'serif' }}>
-                  {activeNode.label}
-                </div>
-                <div style={{ fontSize: '12px', opacity: 0.5 }}>{activeNode.lifeDates}</div>
-              </div>
-            </div>
-
-            {/* Контролы */}
-            <div style={{
-              padding: '15px 20px',
-              background: '#fafafa',
-              borderBottom: '1px solid #eee',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}>
-              <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                {activeNode.pieces[activePieceIndex]?.treble?.length > 0 ? (
-                  <>
-                    <button
-                      onClick={() => togglePlayPause(activeNode.pieces[activePieceIndex], activeNode.era as Era)}
-                      style={minimalBtnStyle}
-                    >
-                      {playbackState === 'playing' ? (
-                        <svg width="24" height="24" viewBox="0 0 24 24">
-                          <path d="M6 4h4v16H6zm8 0h4v16h-4z" fill="currentColor" />
-                        </svg>
-                      ) : (
-                        <svg width="24" height="24" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z" fill="currentColor" />
-                        </svg>
-                      )}
-                    </button>
-                    <button onClick={stop} style={minimalBtnStyle}>
-                      <svg width="20" height="20" viewBox="0 0 24 24">
-                        <path d="M6 6h12v12H6z" fill="currentColor" />
-                      </svg>
-                    </button>
-                  </>
-                ) : (
-                  <span style={{ fontSize: '11px', color: '#999' }}>ноты не добавлены</span>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', maxWidth: '200px' }}>
-                {activeNode.pieces.map((p, idx) => (
-                  <button
-                    key={p.id}
-                    onClick={() => { stop(); setActivePieceIndex(idx); }}
-                    style={{
-                      ...bubbleStyle,
-                      borderColor: activePieceIndex === idx ? '#000' : '#eee',
-                      fontWeight: activePieceIndex === idx ? 'bold' : 'normal',
-                    }}
-                  >
-                    {p.title}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Превью нот */}
-            <div
-              style={{ padding: '20px', cursor: 'pointer', textAlign: 'center' }}
-              onClick={() => {
-                stop();
-                setFullScreenPiece({
-                  piece: activeNode.pieces[activePieceIndex],
-                  composer: activeNode.label,
-                  era: activeNode.era as Era,
-                });
-              }}
-            >
-              <VexScore
-                treble={activeNode.pieces[activePieceIndex].treble}
-                bass={activeNode.pieces[activePieceIndex].bass}
-                width={460}
-                limit={2}
-              />
-              <div style={{ fontSize: '10px', textTransform: 'uppercase', marginTop: '10px' }}>
-                Click to Expand ↗
-              </div>
-            </div>
-          </div>
-        </>
-      )}
 
       {/* HUD */}
       <div style={{ position: 'fixed', top: 20, left: 30, zIndex: 100, pointerEvents: 'none' }}>
@@ -351,35 +247,92 @@ export const ScoreCanvas = () => {
 
           {rawComposers.map((node) => {
             const pos = getNodePos(node);
+            const isSelected = selectedComposer?.id === node.id;
+
             return (
               <div
                 key={node.id}
                 style={{
                   position: 'absolute',
                   left: pos.x, top: pos.y - 40,
-                  zIndex: 10, cursor: 'pointer',
+                  zIndex: isSelected ? 100 : 10,
                   display: 'flex', flexDirection: 'column', alignItems: 'center',
                 }}
-                onClick={() => { setActiveNode(node); setActivePieceIndex(0); stop(); }}
               >
-                <div style={{
-                  width: '70px', height: '70px',
-                  borderRadius: '50%',
-                  overflow: 'hidden',
-                  border: '1px solid #000',
-                  background: '#fff',
-                  marginBottom: '10px',
-                  transition: 'transform 0.2s',
-                }}>
+                {/* Круг композитора */}
+                <div
+                  style={{
+                    width: '70px', height: '70px',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    border: isSelected ? '3px solid #000' : '1px solid #000',
+                    background: '#fff',
+                    marginBottom: '10px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    boxShadow: isSelected ? '0 0 20px rgba(0,0,0,0.3)' : 'none',
+                  }}
+                  onClick={() => {
+                    setSelectedComposer(isSelected ? null : node);
+                    stop();
+                  }}
+                >
                   <AsyncImage src={node.image} alt={node.label} />
                 </div>
-                <div style={{
-                  fontSize: '14px', fontWeight: '600',
-                  background: 'rgba(255,255,255,0.8)',
-                  padding: '2px 8px',
-                }}>
+
+                {/* Имя композитора */}
+                <div
+                  style={{
+                    fontSize: '14px', fontWeight: '600',
+                    background: 'rgba(255,255,255,0.8)',
+                    padding: '2px 8px',
+                  }}
+                >
                   {node.label}
                 </div>
+
+                {/* FLOATING PIECE CARDS вокруг выбранного композитора */}
+                {isSelected && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0, left: 0,
+                      width: '400px', height: '400px',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    {node.pieces.map((piece, idx) => (
+                      <div
+                        key={piece.id}
+                        style={{
+                          position: 'absolute',
+                          pointerEvents: 'auto',
+                        }}
+                      >
+                        <FloatingPieceCard
+                          piece={piece}
+                          composerName={node.label}
+                          era={node.era as Era}
+                          index={idx}
+                          total={node.pieces.length}
+                          onExpand={() => {
+                            setFullScreenPiece({
+                              piece,
+                              composer: node.label,
+                              era: node.era as Era,
+                            });
+                          }}
+                          isPlaying={playingPieceId === piece.id && playbackState === 'playing'}
+                          onTogglePlay={() => {
+                            setPlayingPieceId(piece.id);
+                            togglePlayPause(piece, node.era as Era);
+                          }}
+                          onStop={stop}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}

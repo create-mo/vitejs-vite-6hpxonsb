@@ -46,30 +46,23 @@ function playTone(
   startTime: number,
   duration: number,
   adsr: ADSR,
-  gainScale = 1,
-  reverbNode?: GainNode
+  gainScale = 1
 ) {
   if (freq <= 0 || duration <= 0) return;
 
   const osc = ctx.createOscillator();
   const osc2 = ctx.createOscillator();
-  const osc3 = ctx.createOscillator();
   const gain = ctx.createGain();
 
   osc.type = 'triangle';
   osc2.type = 'sine';
-  osc3.type = 'sine';
 
   osc.frequency.value = freq;
-  osc2.frequency.value = freq * 2;    // октава
-  osc3.frequency.value = freq * 1.5;  // кварта
+  osc2.frequency.value = freq * 2;    // октавная гармоника
 
   osc.connect(gain);
   osc2.connect(gain);
-  osc3.connect(gain);
-
-  const dest = reverbNode || ctx.destination;
-  gain.connect(dest);
+  gain.connect(ctx.destination);
 
   const p = adsr.peak * gainScale;
   const attackEnd = startTime + adsr.attack;
@@ -85,10 +78,8 @@ function playTone(
 
   osc.start(startTime);
   osc2.start(startTime);
-  osc3.start(startTime);
   osc.stop(noteEnd);
   osc2.stop(noteEnd);
-  osc3.stop(noteEnd);
 }
 
 function scheduleVoice(
@@ -98,10 +89,10 @@ function scheduleVoice(
   beatTime: number,
   adsr: ADSR,
   gainScale: number,
-  effect: PlayEffect,
-  reverbNode?: GainNode
+  effect: PlayEffect
 ): number {
   let t = startTime;
+  const LEGATO_OVERLAP = 0.05; // 50ms легато для плавности
 
   for (const measure of measures) {
     const tokens = measure.split(',');
@@ -114,18 +105,20 @@ function scheduleVoice(
         continue;
       }
       const freq = getFreq(parts[0] + '/' + parts[1]);
+      // Добавляем легато: нота начинается чуть раньше, чтобы перекрыться с предыдущей
+      const noteStart = Math.max(startTime, t - LEGATO_OVERLAP);
 
       if (effect === 'arpeggio') {
         const third = freq * Math.pow(2, 4 / 12);
         const fifth = freq * Math.pow(2, 7 / 12);
         const step = dur / 3;
-        playTone(ctx, freq,  t,            step * 2.2, adsr, gainScale, reverbNode);
-        playTone(ctx, third, t + step,     step * 2.2, adsr, gainScale * 0.8, reverbNode);
-        playTone(ctx, fifth, t + step * 2, step * 2.2, adsr, gainScale * 0.7, reverbNode);
+        playTone(ctx, freq,  noteStart,        step * 2.2, adsr, gainScale);
+        playTone(ctx, third, noteStart + step,     step * 2.2, adsr, gainScale * 0.8);
+        playTone(ctx, fifth, noteStart + step * 2, step * 2.2, adsr, gainScale * 0.7);
       } else {
-        playTone(ctx, freq, t, dur, adsr, gainScale, reverbNode);
+        playTone(ctx, freq, noteStart, dur, adsr, gainScale);
         if (effect === 'thirds') {
-          playTone(ctx, freq * Math.pow(2, 4 / 12), t, dur, adsr, gainScale * 0.5, reverbNode);
+          playTone(ctx, freq * Math.pow(2, 4 / 12), noteStart, dur, adsr, gainScale * 0.5);
         }
       }
 
@@ -161,32 +154,9 @@ export function useAudioPlayer() {
       const beatTime = 60 / piece.tempo;
       const t0 = ctx.currentTime + 0.05;
 
-      // Простой reverb через delay + feedback
-      const reverbGain = ctx.createGain();
-      const delay1 = ctx.createDelay(0.5);
-      const delay2 = ctx.createDelay(0.3);
-      const fb = ctx.createGain();
-      const wet = ctx.createGain();
-
-      delay1.delayTime.value = 0.05;  // 50ms
-      delay2.delayTime.value = 0.03;  // 30ms
-      fb.gain.value = 0.3;             // feedback 30%
-      wet.gain.value = 0.15;            // 15% wet signal
-
-      reverbGain.connect(delay1);
-      reverbGain.connect(delay2);
-      delay1.connect(fb);
-      delay2.connect(fb);
-      fb.connect(delay1);
-      fb.connect(delay2);
-      delay1.connect(wet);
-      delay2.connect(wet);
-      reverbGain.connect(ctx.destination);
-      wet.connect(ctx.destination);
-
       // Треббл и бас играют ОДНОВРЕМЕННО с одного t0
-      const trebleEnd = scheduleVoice(ctx, piece.treble, t0, beatTime, adsr, 1.0, effect, reverbGain);
-      scheduleVoice(ctx, piece.bass, t0, beatTime, { ...adsr, peak: adsr.peak * 0.65 }, 0.65, 'none', reverbGain);
+      const trebleEnd = scheduleVoice(ctx, piece.treble, t0, beatTime, adsr, 1.0, effect);
+      scheduleVoice(ctx, piece.bass, t0, beatTime, { ...adsr, peak: adsr.peak * 0.65 }, 0.65, 'none');
 
       timeoutsRef.current.push(
         window.setTimeout(
