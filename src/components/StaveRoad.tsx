@@ -29,10 +29,12 @@ export const StaveRoad = ({ startX, startY, endX, endY, label }: Props) => {
       const roadYAtT = (1 - t) * startY + t * endY; // Линейная интерполяция (грубо, но для клякс сойдет)
 
       // ОЧЕНЬ МАЛЕНЬКИЙ РАЗБРОС (Строго внутри стана)
-      // Стан высотой 20px (+/- 10px). Делаем разброс +/- 6px
-      const yOffset = (Math.random() - 0.5) * 12;
+      // Стан высотой 20px (линии на -10, -5, 0, 5, 10). Делаем разброс +/- 5px
+      const yOffset = (Math.random() - 0.5) * 10;
 
-      const noteY = roadYAtT + yOffset;
+      // Убедимся, что нота не вылезает за границы стана (±10px от центра)
+      const clampedYOffset = Math.max(-10, Math.min(10, yOffset));
+      const noteY = roadYAtT + clampedYOffset;
       const size = Math.random() * 2 + 1.5;
 
       notes.push(
@@ -75,8 +77,8 @@ export const StaveRoad = ({ startX, startY, endX, endY, label }: Props) => {
         fontSize="9px"
         fontWeight="600"
         letterSpacing="2px"
-        textTransform="uppercase"
         opacity={0.7}
+        style={{ textTransform: 'uppercase' }}
       >
         <textPath href={`#${roadId}`} startOffset="50%" textAnchor="middle">
           {label}

@@ -56,10 +56,45 @@ export const ScoreCanvas = () => {
   } | null>(null);
 
   const { playbackState, effect, setEffect, togglePlayPause, stop } = useAudioPlayer();
-  const { composers: dbComposers, loading: dbLoading } = useComposers();
+  const { composers: dbComposers, loading: dbLoading, error: dbError } = useComposers();
+
+  console.log('[ScoreCanvas] Rendering. dbLoading:', dbLoading, 'dbComposers:', dbComposers.length, 'error:', dbError);
 
   // Используем Supabase если загрузилось, иначе локальную базу
-  const composers = dbLoading || dbComposers.length === 0 ? DATABASE : dbComposers;
+  const rawComposers = dbLoading || dbComposers.length === 0 ? DATABASE : dbComposers;
+
+  // Анализируем позиции композиторов для отладки перекрытий
+  useEffect(() => {
+    if (rawComposers.length > 0) {
+      const sorted = [...rawComposers].sort((a, b) => a.x - b.x);
+      console.log('[ScoreCanvas] Composer positions:');
+      sorted.forEach(c => {
+        console.log(`  ${c.label}: x=${c.x.toFixed(2)}, y=${c.y.toFixed(2)}, screenX=${(c.x * GRID_X + 200).toFixed(0)}, screenY=${(HORIZON_Y + c.y * GRID_Y).toFixed(0)}`);
+      });
+
+      // Проверяем перекрытия (минимальное расстояние между окружностями — 70px + margin)
+      const MIN_DISTANCE = 100; // px (70 диаметр + зазор)
+      const overlaps: string[] = [];
+      for (let i = 0; i < sorted.length - 1; i++) {
+        const c1 = sorted[i];
+        const c2 = sorted[i + 1];
+        const screenX1 = c1.x * GRID_X + 200;
+        const screenY1 = HORIZON_Y + c1.y * GRID_Y;
+        const screenX2 = c2.x * GRID_X + 200;
+        const screenY2 = HORIZON_Y + c2.y * GRID_Y;
+        const dist = Math.sqrt((screenX2 - screenX1) ** 2 + (screenY2 - screenY1) ** 2);
+        if (dist < MIN_DISTANCE) {
+          overlaps.push(`⚠️ ${c1.label} & ${c2.label}: ${dist.toFixed(0)}px (min: ${MIN_DISTANCE}px)`);
+        }
+      }
+      if (overlaps.length > 0) {
+        console.warn('[ScoreCanvas] OVERLAPS DETECTED:');
+        overlaps.forEach(o => console.warn(`  ${o}`));
+      } else {
+        console.log('[ScoreCanvas] ✓ No overlaps detected');
+      }
+    }
+  }, [rawComposers]);
 
   // === СЛЕДЯЩАЯ КАМЕРА ===
   const handleScroll = () => {
@@ -67,7 +102,7 @@ export const ScoreCanvas = () => {
     const scrollLeft = scrollRef.current.scrollLeft;
     const viewportCenter = scrollLeft + window.innerWidth / 2;
     const mapX = (viewportCenter - 200) / (GRID_X * zoom);
-    const sortedNodes = [...composers].sort((a, b) => a.x - b.x);
+    const sortedNodes = [...rawComposers].sort((a, b) => a.x - b.x);
 
     let leftNode = sortedNodes[0];
     let rightNode = sortedNodes[sortedNodes.length - 1];
@@ -81,7 +116,9 @@ export const ScoreCanvas = () => {
 
     const t = Math.max(0, Math.min(1, (mapX - leftNode.x) / (rightNode.x - leftNode.x)));
     const targetY = (1 - t) * leftNode.y + t * rightNode.y;
-    setCameraY(-targetY * GRID_Y);
+    // Центрируем viewport вертикально: вычитаем HORIZON_Y + расчитанное смещение, плюс половину высоты экрана
+    const screenCenterOffset = window.innerHeight / 2 / zoom;
+    setCameraY(-(HORIZON_Y + targetY * GRID_Y) + screenCenterOffset);
   };
 
   useEffect(() => {
@@ -91,7 +128,7 @@ export const ScoreCanvas = () => {
       handleScroll();
       return () => el.removeEventListener('scroll', handleScroll);
     }
-  }, [zoom]);
+  }, [zoom, rawComposers.length]); // Пересчитываем при загрузке композиторов
 
   // suppress unused warning for useLayoutEffect (kept for future DOM measurements)
   void useLayoutEffect;
@@ -102,10 +139,10 @@ export const ScoreCanvas = () => {
   });
 
   const renderRoads = () =>
-    composers.map((node) => {
+    rawComposers.map((node) => {
       const start = getNodePos(node);
       return node.predecessors.map((predId) => {
-        const pred = composers.find((n) => n.id === predId);
+        const pred = rawComposers.find((n) => n.id === predId);
         if (!pred) return null;
         const end = getNodePos(pred);
         return (
@@ -267,14 +304,24 @@ export const ScoreCanvas = () => {
         <h1 style={{ fontSize: '28px', fontWeight: '900', margin: 0 }}>TIMELINE</h1>
         {dbLoading && (
           <div style={{ fontSize: '11px', color: '#999', marginTop: '4px', letterSpacing: '1px' }}>
-            загрузка...
+            загрузка из Supabase...
           </div>
         )}
         {!dbLoading && (
           <div style={{ fontSize: '11px', color: '#bbb', marginTop: '4px' }}>
-            {composers.length} композиторов
+            {rawComposers.length} композиторов {dbComposers.length > 0 ? '(Supabase)' : '(локально)'}
           </div>
         )}
+        <div style={{ fontSize: '10px', color: '#ccc', marginTop: '8px', background: '#f0f0f0', padding: '4px', borderRadius: '3px' }}>
+          <div>dbLoading: {String(dbLoading)}</div>
+          <div>dbComposers: {dbComposers.length}</div>
+          <div>displayed: {rawComposers.length}</div>
+          {dbError && (
+            <div style={{ color: '#c00', marginTop: '4px', fontWeight: 'bold', fontSize: '9px' }}>
+              ERROR: {dbError.substring(0, 100)}
+            </div>
+          )}
+        </div>
       </div>
       <div style={{ position: 'fixed', bottom: 30, right: 30, display: 'flex', gap: '10px', zIndex: 100 }}>
         <button onClick={() => setZoom((z) => Math.max(0.3, z - 0.1))} style={zoomBtnStyle}>-</button>
@@ -302,7 +349,7 @@ export const ScoreCanvas = () => {
             {renderRoads()}
           </svg>
 
-          {composers.map((node) => {
+          {rawComposers.map((node) => {
             const pos = getNodePos(node);
             return (
               <div
