@@ -65,20 +65,40 @@ Contemporary:   { attack: 0.003, decay: 0.03, sustain: 0.22, release: 0.12, peak
 
 ## Status (as of 2026-03-13)
 
-### Done
-- [x] ADSR envelope in `useAudioPlayer.ts`
-- [x] Treble + bass play simultaneously
-- [x] ERA_DYNAMICS for 5 eras
-- [x] Thirds/arpeggio effects with UI toggle (Обычно / Терции / Арпеджио)
-- [x] Supabase integration without SDK (plain fetch, StackBlitz-compatible)
-- [x] 70 composers + metadata seeded in DB
-- [x] Fallback to local DATABASE while Supabase loads
-- [x] `.env` protected from GitHub (in `.gitignore`)
+### ✅ WORKING
+- [x] Supabase connection with 74 composers loaded from DB
+- [x] 700+ music pieces with note data (treble/bass arrays populated via seed_notes.py)
+- [x] Music notation renders in cards and fullscreen modal (VexFlow)
+- [x] Audio playback with ADSR envelope + era-specific dynamics
+- [x] Play effects: none / thirds / arpeggio
+- [x] Composer cards with piece selection and preview
+- [x] Fallback to local DATABASE during Supabase load
 
-### Not done / next steps
-- [ ] **Note data**: `treble[]` and `bass[]` are empty for all 70 seeded composers — needs population
-- [ ] **Navigator UI**: camera pan mechanics, road rendering, street-sign labels — `StaveRoad.tsx` exists but full map interaction not implemented
-- [ ] **Composer connections**: `predecessors[]` field exists in DB but influence graph/roads not fully wired to UI
+### 🐛 BUGS & ISSUES (Priority order)
+1. **Camera not centered** — viewport Y position wrong, composers not in center view
+2. **Composers clustered** — X/Y positions cause overlapping circles, hard to read
+3. **StaveRoad visual bugs** — black dots (notes) overflow outside 5-line staff boundaries
+4. **Fullscreen music notation** — multiple staves overflow page, need scroll/pagination solution
+5. **Audio quality** — lacks polyphony & harmonic richness, sounds thin/synthetic
+
+### 📋 NEXT TASKS (in order)
+1. **Fix camera centering** (useScroll logic in ScoreCanvas)
+2. **Adjust composer positions** (X/Y spacing in database or calculated offsets)
+3. **Fix StaveRoad note positioning** (keep dots inside ±10px of staff line)
+4. **Implement music notation pagination** (split long pieces across pages or zoom)
+5. **Enhance audio synthesis** (add polyphony, better oscillator mix, reverb)
+
+## Note data population
+
+**Status:** ✅ DONE (seed_notes.py ran successfully on 2026-03-13)
+
+All 700 pieces now have `treble[]` and `bass[]` arrays populated with:
+- **Known composers** (25): Curated patterns specific to each (Bach fugues, Mozart sonatas, etc.)
+- **Unknown composers**: Era-appropriate fallback patterns (Baroque, Classical, Romantic, 20th Century, Contemporary)
+
+Pattern format: `"c/5/q"` = C5, quarter note. Arrays like `['c/5/q', 'd/5/q', 'e/5/h']`
+
+Script: `scripts/seed_notes.py` (651 lines) — maps 74 Supabase composers to patterns via lowercase substring match.
 
 ## Important gotchas
 
@@ -87,3 +107,4 @@ Contemporary:   { attack: 0.003, decay: 0.03, sustain: 0.22, release: 0.12, peak
 3. **Python for scripts**: Node.js unavailable in shell. Use `C:\Users\user\AppData\Local\Programs\Python\Python314\python.exe`.
 4. **SQL migrations**: Run in Supabase SQL Editor (Dashboard), not via CLI — PostgREST doesn't support DDL.
 5. **Free plan**: Supabase free tier — keep composers ≤ 70, pieces ≤ 10 per composer.
+6. **Env vars in StackBlitz**: Add to `.env` file (plain text, will be loaded by Vite at build time)

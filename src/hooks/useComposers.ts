@@ -38,17 +38,23 @@ export function useComposers() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('[useComposers] Starting fetch...');
     Promise.all([
       sbSelect<DBComposer>('composers', '*'),
       sbSelect<DBPiece>('pieces', '*'),
     ])
       .then(([dbComposers, dbPieces]) => {
+        console.log('[useComposers] Loaded:', dbComposers.length, 'composers,', dbPieces.length, 'pieces');
         const nodes = dbComposers
           .sort((a, b) => a.x - b.x)
           .map(c => toComposerNode(c, dbPieces.filter(p => p.composer_id === c.id)));
         setComposers(nodes);
+        console.log('[useComposers] Mapped to', nodes.length, 'nodes');
       })
-      .catch(err => setError(String(err)))
+      .catch(err => {
+        console.error('[useComposers] Error:', err);
+        setError(String(err));
+      })
       .finally(() => setLoading(false));
   }, []);
 

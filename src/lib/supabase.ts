@@ -1,6 +1,8 @@
 // Supabase REST API клиент без SDK (работает в StackBlitz)
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+const SUPABASE_URL = 'https://jtytuaxjkyswzuqrwweq.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0eXR1YXhqa3lzd3p1cXJ3d2VxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxNjE2NDUsImV4cCI6MjA4ODczNzY0NX0.GtVGtdODtFP6Jb351qOrx8KG7ey6ov6cFnrCrA1vP9E';
+
+console.log('[supabase.ts] Hardcoded credentials loaded');
 
 const headers = {
   apikey: SUPABASE_KEY,
@@ -13,9 +15,17 @@ export async function sbSelect<T>(
   query = '*'
 ): Promise<T[]> {
   const url = `${SUPABASE_URL}/rest/v1/${table}?select=${encodeURIComponent(query)}`;
+  console.log('[sbSelect] Fetching:', url);
   const res = await fetch(url, { headers });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  console.log('[sbSelect]', table, 'status:', res.status);
+  if (!res.ok) {
+    const err = await res.text();
+    console.error('[sbSelect] Error:', err);
+    throw new Error(err);
+  }
+  const data = await res.json();
+  console.log('[sbSelect]', table, 'got', Array.isArray(data) ? data.length : 'object');
+  return data;
 }
 
 // Типы
