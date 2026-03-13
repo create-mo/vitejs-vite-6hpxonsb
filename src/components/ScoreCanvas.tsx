@@ -9,10 +9,10 @@ import { useComposers } from '../hooks/useComposers';
 import type { Era } from '../hooks/useAudioPlayer';
 import { ERA_REGIONS, ERA_DIVIDERS } from '../lib/eraMap';
 
-// ПАРАМЕТРЫ МИРА (как на карте города)
-const GRID_X = 900;  // Больше пикселей на единицу X
-const GRID_Y = 350;  // Больше пикселей на единицу Y
-const WORLD_HEIGHT = 2000;
+// ПАРАМЕТРЫ МИРА — компактное дерево, вся информация в окне
+const GRID_X = 900;     // Пиксели на единицу X (время)
+const GRID_Y = 200;     // Пиксели на единицу Y (уменьшено с 350)
+const WORLD_HEIGHT = 1200; // Весь контент должен помещаться (уменьшено с 2000)
 const HORIZON_Y = WORLD_HEIGHT / 2;
 
 const AsyncImage = ({ src, alt }: { src: string; alt: string }) => {
@@ -71,18 +71,18 @@ export const ScoreCanvas = () => {
   // Используем Supabase если загрузилось, иначе локальную базу
   let rawComposers = dbLoading || dbComposers.length === 0 ? DATABASE : dbComposers;
 
-  // === SMART LAYOUT: распределяем композиторов как на карте города ===
+  // === SMART LAYOUT: компактное дерево, всё в рамках экрана ===
   const ERA_ORDER = ['Baroque', 'Classical', 'Romantic', '20th Century', 'Contemporary'];
   const ERA_Y_CENTER: Record<string, number> = {
-    'Baroque': 0.5,
-    'Classical': 0.8,
-    'Romantic': 1.1,
-    '20th Century': 1.4,
-    'Contemporary': 1.7,
+    'Baroque': 0,        // Барокко в центре (HORIZON_Y)
+    'Classical': 0.15,   // Классика выше
+    'Romantic': 0.3,     // Романтика ещё выше
+    '20th Century': 0.45, // 20 век
+    'Contemporary': 0.6,  // Современная музыка — всё укладывается в WORLD_HEIGHT
   };
   const CLUSTER_THRESHOLD = 0.3; // X units: композиторы "одновременны"
-  const CLUSTER_SPREAD = 0.6;    // Как широко раскрывать кластер по X (как на карте города)
-  const CLUSTER_STEP = 1.2;      // Y шаг между стопками (больше расстояния)
+  const CLUSTER_SPREAD = 0.6;    // Раскрытие кластера по X
+  const CLUSTER_STEP = 0.4;      // Y шаг между синхронными авторами (уменьшено с 1.2)
 
   const smartCityLayout = (composers: ComposerNode[]): ComposerNode[] => {
     const result: ComposerNode[] = [];
@@ -115,9 +115,9 @@ export const ScoreCanvas = () => {
           const xSpread = n === 1 ? 0 : (i - (n - 1) / 2) * CLUSTER_SPREAD;
           const newX = centerX + xSpread;
 
-          // Раскрываем по Y: стопка по вертикали (как районы на карте)
+          // Раскрываем по Y: стопка по вертикали (уменьшено для компактности)
           const ySpread = n === 1 ? 0 : (i - (n - 1) / 2) * CLUSTER_STEP;
-          const clampedYOffset = Math.max(-2.0, Math.min(2.0, ySpread));
+          const clampedYOffset = Math.max(-0.8, Math.min(0.8, ySpread));
 
           result.push({ ...c, x: newX, y: baseY + clampedYOffset });
         });

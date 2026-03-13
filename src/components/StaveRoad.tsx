@@ -98,9 +98,10 @@ export const StaveRoad = ({ startX, startY, endX, endY, label }: Props) => {
   const dy = endY - startY;
   const distance = Math.sqrt(dx * dx + dy * dy);
 
-  // Боковое смещение для волнистости (зависит от расстояния и угла)
-  const sideOffset = distance * 0.15; // волнистость
-  const controlInfluence = 0.4; // как далеко контрольные точки от линии
+  // Боковое смещение для волнистости (как дороги в Римской империи)
+  // Даже короткие дороги имеют минимальную волнистость
+  const sideOffset = Math.max(20, distance * 0.2); // мин 20px волнистости
+  const controlInfluence = Math.max(0.3, distance * 0.35); // адаптивное влияние
 
   // Нормаль к линии (перпендикуляр)
   const perpX = -dy / distance;
