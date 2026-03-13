@@ -69,14 +69,14 @@ export const ScoreCanvas = () => {
   // === SMART LAYOUT: распределяем композиторов с умной группировкой ===
   const ERA_ORDER = ['Baroque', 'Classical', 'Romantic', '20th Century', 'Contemporary'];
   const ERA_Y_CENTER: Record<string, number> = {
-    'Baroque': -0.7,
-    'Classical': -0.35,
-    'Romantic': 0,
-    '20th Century': 0.35,
-    'Contemporary': 0.7,
+    'Baroque': 0,
+    'Classical': 0.3,
+    'Romantic': 0.6,
+    '20th Century': 0.9,
+    'Contemporary': 1.2,
   };
-  const CLUSTER_THRESHOLD = 0.4; // X units (~240px): композиторы "одновременны"
-  const CLUSTER_STEP = 0.4;      // Y шаг между стопками
+  const CLUSTER_THRESHOLD = 0.3; // X units (~180px): композиторы "одновременны"
+  const CLUSTER_STEP = 0.8;      // Y шаг между стопками (был 0.4)
 
   const smartYLayout = (composers: ComposerNode[]): ComposerNode[] => {
     const result: ComposerNode[] = [];
@@ -104,7 +104,7 @@ export const ScoreCanvas = () => {
         const n = cluster.length;
         cluster.forEach((c, i) => {
           const offset = (i - (n - 1) / 2) * CLUSTER_STEP;
-          const clampedOffset = Math.max(-0.8, Math.min(0.8, offset));
+          const clampedOffset = Math.max(-1.2, Math.min(1.2, offset));
           result.push({ ...c, y: baseY + clampedOffset });
         });
       }
