@@ -9,9 +9,9 @@ import { useComposers } from '../hooks/useComposers';
 import type { Era } from '../hooks/useAudioPlayer';
 import { ERA_REGIONS, ERA_DIVIDERS } from '../lib/eraMap';
 
-// ПАРАМЕТРЫ МИРА
-const GRID_X = 600;
-const GRID_Y = 250;
+// ПАРАМЕТРЫ МИРА (как на карте города)
+const GRID_X = 900;  // Больше пикселей на единицу X
+const GRID_Y = 350;  // Больше пикселей на единицу Y
 const WORLD_HEIGHT = 2000;
 const HORIZON_Y = WORLD_HEIGHT / 2;
 
@@ -72,7 +72,7 @@ export const ScoreCanvas = () => {
   // Используем Supabase если загрузилось, иначе локальную базу
   let rawComposers = dbLoading || dbComposers.length === 0 ? DATABASE : dbComposers;
 
-  // === SMART LAYOUT: распределяем композиторов с умной группировкой ===
+  // === SMART LAYOUT: распределяем композиторов как на карте города ===
   const ERA_ORDER = ['Baroque', 'Classical', 'Romantic', '20th Century', 'Contemporary'];
   const ERA_Y_CENTER: Record<string, number> = {
     'Baroque': 0.5,
@@ -81,10 +81,11 @@ export const ScoreCanvas = () => {
     '20th Century': 1.4,
     'Contemporary': 1.7,
   };
-  const CLUSTER_THRESHOLD = 0.3; // X units (~180px): композиторы "одновременны"
-  const CLUSTER_STEP = 0.8;      // Y шаг между стопками (был 0.4)
+  const CLUSTER_THRESHOLD = 0.3; // X units: композиторы "одновременны"
+  const CLUSTER_SPREAD = 0.6;    // Как широко раскрывать кластер по X (как на карте города)
+  const CLUSTER_STEP = 1.2;      // Y шаг между стопками (больше расстояния)
 
-  const smartYLayout = (composers: ComposerNode[]): ComposerNode[] => {
+  const smartCityLayout = (composers: ComposerNode[]): ComposerNode[] => {
     const result: ComposerNode[] = [];
 
     for (const era of ERA_ORDER) {
@@ -92,7 +93,7 @@ export const ScoreCanvas = () => {
       if (!eraComps.length) continue;
       const baseY = ERA_Y_CENTER[era] ?? 0;
 
-      // Группируем композиторов одной эры в кластеры (синхронные)
+      // Группируем в кластеры по X-близости
       const clusters: ComposerNode[][] = [];
       let current: ComposerNode[] = [eraComps[0]];
       for (let i = 1; i < eraComps.length; i++) {
@@ -105,13 +106,21 @@ export const ScoreCanvas = () => {
       }
       clusters.push(current);
 
-      // Назначаем стагнированные Y внутри каждого кластера
+      // Для каждого кластера: раскрываем по X (город-стиль) и Y
       for (const cluster of clusters) {
         const n = cluster.length;
+        const centerX = cluster.reduce((sum, c) => sum + c.x, 0) / n;
+
         cluster.forEach((c, i) => {
-          const offset = (i - (n - 1) / 2) * CLUSTER_STEP;
-          const clampedOffset = Math.max(-1.2, Math.min(1.2, offset));
-          result.push({ ...c, y: baseY + clampedOffset });
+          // Раскрываем по X: например, 3 композитора займут [-0.35, 0, +0.35]
+          const xSpread = n === 1 ? 0 : (i - (n - 1) / 2) * CLUSTER_SPREAD;
+          const newX = centerX + xSpread;
+
+          // Раскрываем по Y: стопка по вертикали (как районы на карте)
+          const ySpread = n === 1 ? 0 : (i - (n - 1) / 2) * CLUSTER_STEP;
+          const clampedYOffset = Math.max(-2.0, Math.min(2.0, ySpread));
+
+          result.push({ ...c, x: newX, y: baseY + clampedYOffset });
         });
       }
     }
@@ -122,16 +131,12 @@ export const ScoreCanvas = () => {
     return result;
   };
 
-  // Применяем smartYLayout если мало уникальных Y значений (композиторы кучей)
+  // Применяем smartCityLayout для раскрытия кластеров по X и Y (город-стиль)
   const uniqueYValues = new Set(rawComposers.map(c => c.y.toFixed(2)));
-  console.log('[SmartLayout] Unique Y values:', uniqueYValues.size, 'Values:', Array.from(uniqueYValues));
-  if (uniqueYValues.size <= 4) {
-    console.log('[SmartLayout] Applying smartYLayout...');
-    rawComposers = smartYLayout(rawComposers);
-    console.log('[SmartLayout] After layout, Y values:', rawComposers.map(c => `${c.label}=${c.y.toFixed(2)}`).slice(0, 10).join(', '));
-  } else {
-    console.log('[SmartLayout] Skipping - already have varied Y values');
-  }
+  console.log('[SmartLayout] Unique Y values:', uniqueYValues.size);
+  console.log('[SmartLayout] Applying smartCityLayout...');
+  rawComposers = smartCityLayout(rawComposers);
+  console.log('[SmartLayout] After layout, sample:', rawComposers.slice(0, 5).map(c => `${c.label}: x=${c.x.toFixed(2)}, y=${c.y.toFixed(2)}`).join(' | '));
 
   // === SMART ROADS: строим сетку дорог (спины по эрам + мосты между ними) ===
   const smartRoadConnect = (composers: ComposerNode[]): ComposerNode[] => {
@@ -262,6 +267,16 @@ export const ScoreCanvas = () => {
     x: node.x * GRID_X + 200,
     y: HORIZON_Y + node.y * GRID_Y,
   });
+
+  // Вычисляем диапазон X и динамическую ширину
+  const sortedByX = [...rawComposers].sort((a, b) => a.x - b.x);
+  const minX = sortedByX.length > 0 ? sortedByX[0].x : 0;
+  const maxX = sortedByX.length > 0 ? sortedByX[sortedByX.length - 1].x : 0;
+  const edgeMargin = 400; // px на каждый край
+  const canvasWidth = Math.max(
+    window.innerWidth,
+    (maxX - minX) * GRID_X + 200 + 200 + edgeMargin * 2
+  );
 
   // === ОТРИСОВКА ФОНОВЫХ РЕГИОНОВ ЭПО́Х ===
   const renderEraBackgrounds = () => {
@@ -431,7 +446,7 @@ export const ScoreCanvas = () => {
         onMouseLeave={() => setIsDragging(false)}
       >
         <div style={{
-          width: '10000px',
+          width: `${canvasWidth}px`,
           height: WORLD_HEIGHT,
           transform: `scale(${zoom}) translateY(${cameraY}px)`,
           transformOrigin: 'center center',
