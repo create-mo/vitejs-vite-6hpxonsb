@@ -70,9 +70,8 @@ Contemporary:   { attack: 0.003, decay: 0.03, sustain: 0.22, release: 0.12, peak
 - [x] 700+ music pieces with note data (treble/bass arrays populated via seed_notes.py)
 - [x] Music notation renders in cards and fullscreen modal (VexFlow)
 - [x] Audio playback with ADSR envelope + era-specific dynamics
-- [x] Play effects: none / thirds / arpeggio
-- [x] Composer cards with piece selection and preview
-- [x] Fallback to local DATABASE during Supabase load
+- [x] **Composer cards with piece selection and preview**
+- [x] **Fallback to local DATABASE during Supabase load**
 - [x] **Camera centering fixed** — cameraY formula corrected, no drift on zoom
 - [x] **Drag-pan smooth** — panStartRef captures state, no jumping on mousedown
 - [x] **All composers connected** — smartRoadConnect runs unconditionally, no isolated nodes
@@ -80,6 +79,11 @@ Contemporary:   { attack: 0.003, decay: 0.03, sustain: 0.22, release: 0.12, peak
 - [x] **Clean road design** — simplified S-curve Bezier paths, no spaghetti effect
 - [x] **Keyboard controls** — arrow keys (pan), +/- (zoom)
 - [x] **Mouse drag** — smooth pan on empty space, respects boundaries
+- [x] **Live audio synthesis** — duration parsing (w/h/q/8/16), no equal division
+- [x] **Rich timbre** — sine + sawtooth oscillators, era-appropriate vibrato (Romantic/Contemporary)
+- [x] **Dynamic reverb** — era-dependent delay echo (Baroque: dry, Romantic: lush)
+- [x] **Measure accentuation** — +15% volume on first beat for phrasing
+- [x] **Removed effects UI** — no more thirds/arpeggio buttons, using clean 'none' effect
 
 ### 🔧 LAYOUT PARAMETERS (Final)
 **File: `src/components/ScoreCanvas.tsx`**
@@ -110,10 +114,10 @@ const CLUSTER_STEP = 0.4;      // Vertical spacing in cluster
 - Proper Bezier tangent/normal calculations for smooth curves
 
 ### 📋 NEXT TASKS (optional enhancements)
-1. **Audio quality** — add polyphony, better oscillator mix, reverb
-2. **Fullscreen music notation** — implement scroll/pagination for long pieces
-3. **Mobile responsiveness** — touch drag, viewport scaling
-4. **Visual polish** — composer portraits, road animations on hover
+1. **Music notation pagination** — split long pieces across pages or implement scrollable staves
+2. **Mobile responsiveness** — touch drag, viewport scaling, fullscreen on small devices
+3. **Visual polish** — road hover animations, composer birth/death year labels, era tooltips
+4. **Advanced audio** — polyphony (multiple note layers), legato pedal effect, humanization
 
 ## Note data population
 
