@@ -214,7 +214,7 @@ export const ScoreCanvas = () => {
 
   // === СЛЕДЯЩАЯ КАМЕРА ===
   const handleScroll = () => {
-    if (!scrollRef.current) return;
+    if (!scrollRef.current || isDragging) return; // Не обновляем камеру во время драга
 
     // Если выбран композитор, центрируем на нём
     if (selectedComposer) {
@@ -251,6 +251,45 @@ export const ScoreCanvas = () => {
       return () => el.removeEventListener('scroll', handleScroll);
     }
   }, [zoom, rawComposers.length, selectedComposer]); // Пересчитываем при выборе композитора
+
+  // Управление стрелочными клавишами
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const step = 50; // px за нажатие
+      const zoomStep = 0.05;
+
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (scrollRef.current) scrollRef.current.scrollLeft -= step;
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          if (scrollRef.current) scrollRef.current.scrollLeft += step;
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setCameraY((y) => y - step / zoom);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          setCameraY((y) => y + step / zoom);
+          break;
+        case '+':
+        case '=':
+          e.preventDefault();
+          setZoom((z) => Math.min(1.0, z + zoomStep));
+          break;
+        case '-':
+          e.preventDefault();
+          setZoom((z) => Math.max(0.3, z - zoomStep));
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [zoom]);
 
   // suppress unused warning for useLayoutEffect (kept for future DOM measurements)
   void useLayoutEffect;
