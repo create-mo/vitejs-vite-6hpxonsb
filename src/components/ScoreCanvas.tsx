@@ -252,7 +252,7 @@ export const ScoreCanvas = () => {
     }
   }, [zoom, rawComposers.length, selectedComposer]); // Пересчитываем при выборе композитора
 
-  // Управление стрелочными клавишами
+  // Управление стрелочными клавишами и зумом
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const step = 50; // px за нажатие
@@ -281,6 +281,7 @@ export const ScoreCanvas = () => {
           setZoom((z) => Math.min(1.0, z + zoomStep));
           break;
         case '-':
+        case '_':
           e.preventDefault();
           setZoom((z) => Math.max(0.3, z - zoomStep));
           break;
