@@ -61,8 +61,7 @@ export const ScoreCanvas = () => {
 
   // Drag-pan состояние
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const panStartRef = useRef({ scrollLeft: 0, cameraY: 0, mouseX: 0, mouseY: 0 });
 
   const { playbackState, effect, setEffect, togglePlayPause, stop } = useAudioPlayer();
   const { composers: dbComposers, loading: dbLoading, error: dbError } = useComposers();
@@ -140,9 +139,7 @@ export const ScoreCanvas = () => {
 
   // === SMART ROADS: строим сетку дорог (спины по эрам + мосты между ними) ===
   const smartRoadConnect = (composers: ComposerNode[]): ComposerNode[] => {
-    const totalPreds = composers.reduce((s, c) => s + c.predecessors.length, 0);
-    if (totalPreds >= composers.length * 0.25) return composers; // достаточно связей
-
+    // Всегда применяем для композиторов без связей (больше не пропускаем на основе глобального счётчика)
     const sorted = [...composers].sort((a, b) => a.x - b.x);
 
     return sorted.map((c) => {
@@ -170,15 +167,11 @@ export const ScoreCanvas = () => {
     });
   };
 
+  // Всегда подключаем авторов без связей, чтобы избежать изолированных узлов
+  console.log('[SmartRoads] Applying smartRoadConnect to connect all isolated composers...');
+  rawComposers = smartRoadConnect(rawComposers);
   const totalPredecessors = rawComposers.reduce((s, c) => s + c.predecessors.length, 0);
-  console.log('[SmartRoads] Total predecessors:', totalPredecessors, '/', rawComposers.length, '=', (totalPredecessors / rawComposers.length).toFixed(2), '(threshold: 0.25)');
-  if (totalPredecessors < rawComposers.length * 0.25) {
-    console.log('[SmartRoads] Applying smartRoadConnect...');
-    rawComposers = smartRoadConnect(rawComposers);
-    console.log('[SmartRoads] After roads, sample predecessors:', rawComposers.slice(0, 5).map(c => `${c.label}: [${c.predecessors.join(',')}]`).join(' | '));
-  } else {
-    console.log('[SmartRoads] Skipping - enough predecessors already');
-  }
+  console.log('[SmartRoads] After roads:', totalPredecessors, 'connections for', rawComposers.length, 'composers');
 
   // Анализируем позиции композиторов для отладки перекрытий
   useEffect(() => {
@@ -215,9 +208,8 @@ export const ScoreCanvas = () => {
 
   // Центрируем камеру на конкретном композиторе
   const centerOnComposer = (composer: ComposerNode) => {
-    const screenY = HORIZON_Y + composer.y * GRID_Y;
-    const screenCenterOffset = window.innerHeight / 2 / zoom;
-    setCameraY(-(screenY) + screenCenterOffset);
+    const screenCenterOffset = (window.innerHeight / 2 - HORIZON_Y) / zoom;
+    setCameraY(screenCenterOffset - composer.y * GRID_Y);
   };
 
   // === СЛЕДЯЩАЯ КАМЕРА ===
@@ -247,8 +239,8 @@ export const ScoreCanvas = () => {
 
     const t = Math.max(0, Math.min(1, (mapX - leftNode.x) / (rightNode.x - leftNode.x)));
     const targetY = (1 - t) * leftNode.y + t * rightNode.y;
-    const screenCenterOffset = window.innerHeight / 2 / zoom;
-    setCameraY(-(HORIZON_Y + targetY * GRID_Y) + screenCenterOffset);
+    const screenCenterOffset = (window.innerHeight / 2 - HORIZON_Y) / zoom;
+    setCameraY(screenCenterOffset - targetY * GRID_Y);
   };
 
   useEffect(() => {
@@ -428,19 +420,21 @@ export const ScoreCanvas = () => {
         style={{ width: '100%', height: '100%', overflowX: 'auto', overflowY: 'hidden', cursor: isDragging ? 'grabbing' : 'grab' }}
         onMouseDown={(e) => {
           setIsDragging(true);
-          setDragStart({ x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y });
+          panStartRef.current = {
+            scrollLeft: scrollRef.current?.scrollLeft ?? 0,
+            cameraY: cameraY,
+            mouseX: e.clientX,
+            mouseY: e.clientY,
+          };
         }}
         onMouseMove={(e) => {
           if (!isDragging) return;
-          const newOffsetX = e.clientX - dragStart.x;
-          const newOffsetY = e.clientY - dragStart.y;
-          setDragOffset({ x: newOffsetX, y: newOffsetY });
-          // Применяем смещение к скроллу (горизонтально)
+          const dx = e.clientX - panStartRef.current.mouseX;
+          const dy = e.clientY - panStartRef.current.mouseY;
           if (scrollRef.current) {
-            scrollRef.current.scrollLeft = -newOffsetX;
+            scrollRef.current.scrollLeft = panStartRef.current.scrollLeft - dx;
           }
-          // Применяем смещение к cameraY (вертикально)
-          setCameraY(newOffsetY / zoom);
+          setCameraY(panStartRef.current.cameraY + dy / zoom);
         }}
         onMouseUp={() => setIsDragging(false)}
         onMouseLeave={() => setIsDragging(false)}
