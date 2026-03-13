@@ -116,10 +116,10 @@ export const ScoreCanvas = () => {
     return result;
   };
 
-  // Применяем smartYLayout если все Y значения кучей
+  // Применяем smartYLayout если мало уникальных Y значений (композиторы кучей)
   const uniqueYValues = new Set(rawComposers.map(c => c.y.toFixed(2)));
   console.log('[SmartLayout] Unique Y values:', uniqueYValues.size, 'Values:', Array.from(uniqueYValues));
-  if (uniqueYValues.size <= 2) {
+  if (uniqueYValues.size <= 4) {
     console.log('[SmartLayout] Applying smartYLayout...');
     rawComposers = smartYLayout(rawComposers);
     console.log('[SmartLayout] After layout, Y values:', rawComposers.map(c => `${c.label}=${c.y.toFixed(2)}`).slice(0, 10).join(', '));
