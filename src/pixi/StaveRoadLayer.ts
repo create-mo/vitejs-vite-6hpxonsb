@@ -234,23 +234,22 @@ export class StaveRoadLayer extends PIXI.Container {
     const midY = (startY + endY) / 2;
 
     // Создаем текстовый лейбл
-    const text = new PIXI.Text({
-      text: endComposer.era,
-      style: {
-        fontFamily: 'SF Pro Display, Roboto, sans-serif',
-        fontSize: 11,
-        fontWeight: '600',
-        fill: '#d4af37',
-        alpha: 0.6,
-      },
+    const text = new PIXI.Text(endComposer.era, {
+      fontFamily: 'SF Pro Display, Roboto, sans-serif',
+      fontSize: 11,
+      fontWeight: '600' as any,
+      fill: 0xd4af37,
     });
 
     text.position.set(midX, midY - 15);
     text.anchor.set(0.5, 0.5);
+    text.alpha = 0.6;
 
     // Добавляем фоновый прямоугольник для читаемости
     const bg = new PIXI.Graphics();
-    bg.rect(-text.width / 2 - 4, -text.height / 2 - 2, text.width + 8, text.height + 4);
+    const w = text.width;
+    const h = text.height;
+    bg.rect(-w / 2 - 4, -h / 2 - 2, w + 8, h + 4);
     bg.fill({ color: 0x1a1a1a, alpha: 0.7 });
     bg.position.set(midX, midY - 15);
 
