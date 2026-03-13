@@ -27,18 +27,20 @@ export const FloatingPieceCard = ({
 }: Props) => {
   const [hovered, setHovered] = useState(false);
 
-  // Расположение карточек по кругу вокруг композитора
+  // Расположение карточек по спирали вокруг композитора, чтобы не налезали
   const angle = (index / total) * Math.PI * 2;
-  const radius = 150; // px
-  const offsetX = Math.cos(angle) * radius;
-  const offsetY = Math.sin(angle) * radius;
+  // Увеличиваем радиус для большего количества карточек
+  const baseRadius = Math.min(200 + (total - 1) * 40, 400);
+  const offsetX = Math.cos(angle) * baseRadius;
+  const offsetY = Math.sin(angle) * baseRadius;
 
   return (
     <div
       style={{
         position: 'absolute',
-        left: offsetX,
-        top: offsetY,
+        left: `calc(50% + ${offsetX}px)`,
+        top: `calc(50% + ${offsetY}px)`,
+        transform: `translate(-50%, -50%) ${hovered ? 'scale(1.05)' : 'scale(1)'}`,
         width: '140px',
         background: '#fff',
         border: '1px solid #000',
@@ -47,7 +49,6 @@ export const FloatingPieceCard = ({
         boxShadow: hovered ? '0 10px 30px rgba(0,0,0,0.2)' : '0 4px 12px rgba(0,0,0,0.1)',
         cursor: 'pointer',
         transition: 'all 0.2s ease',
-        transform: hovered ? 'scale(1.05)' : 'scale(1)',
         zIndex: 50,
       }}
       onMouseEnter={() => setHovered(true)}

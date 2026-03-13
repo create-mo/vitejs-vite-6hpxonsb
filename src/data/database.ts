@@ -60,7 +60,7 @@ export const DATABASE: ComposerNode[] = [
     lifeDates: '1678–1741',
     image: `${IMG_BASE}/b/bd/Vivaldi.jpg`,
     x: 0.5,
-    y: 1.5,
+    y: -1.2,
     predecessors: [],
     pieces: [
       {
@@ -107,7 +107,7 @@ export const DATABASE: ComposerNode[] = [
     lifeDates: '1756–1791',
     image: `${IMG_BASE}/1/1e/Wolfgang-amadeus-mozart_1.jpg`,
     x: 3.5,
-    y: 0,
+    y: 0.8,
     predecessors: ['bach', 'vivaldi'],
     pieces: [
       {
@@ -154,8 +154,8 @@ export const DATABASE: ComposerNode[] = [
     lifeDates: '1770–1827',
     image: `${IMG_BASE}/6/6f/Beethoven.jpg`,
     x: 6,
-    y: -0.8,
-    predecessors: ['mozart'],
+    y: 0.4,
+    predecessors: ['mozart', 'vivaldi'],
     pieces: [
       {
         id: 'beet_ode_full',
@@ -199,8 +199,8 @@ export const DATABASE: ComposerNode[] = [
     lifeDates: '1840–1893',
     image: `${IMG_BASE}/1/15/Pyotr_Ilyich_Tchaikovsky_late_portrait.jpg`,
     x: 8,
-    y: 1.2,
-    predecessors: ['beethoven'],
+    y: -1.0,
+    predecessors: ['beethoven', 'mozart'],
     pieces: [
       {
         id: 'swan_lake',
@@ -234,8 +234,8 @@ export const DATABASE: ComposerNode[] = [
     lifeDates: '1862–1918',
     image: `${IMG_BASE}/4/48/Claude_Debussy_atelier_Nadar.jpg`,
     x: 9.5,
-    y: -0.5,
-    predecessors: ['tchaikovsky'],
+    y: 0.7,
+    predecessors: ['tchaikovsky', 'beethoven'],
     pieces: [
       {
         id: 'clair_de_lune',
@@ -267,8 +267,8 @@ export const DATABASE: ComposerNode[] = [
     lifeDates: '1882–1971',
     image: `${IMG_BASE}/6/6c/Igor_Stravinsky_LOC_32392u.jpg`,
     x: 11,
-    y: 1,
-    predecessors: ['debussy'],
+    y: -0.8,
+    predecessors: ['debussy', 'tchaikovsky'],
     pieces: [
       {
         id: 'rite_spring',
@@ -292,8 +292,8 @@ export const DATABASE: ComposerNode[] = [
     lifeDates: '1936–',
     image: `${IMG_BASE}/0/03/Steve_Reich_New_York_City_1987.jpg`,
     x: 13,
-    y: 0,
-    predecessors: ['stravinsky'],
+    y: 0.6,
+    predecessors: ['stravinsky', 'debussy'],
     pieces: [
       {
         id: 'piano_phase',

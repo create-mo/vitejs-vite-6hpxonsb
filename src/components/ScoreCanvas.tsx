@@ -336,8 +336,9 @@ export const ScoreCanvas = () => {
                   <div
                     style={{
                       position: 'absolute',
-                      top: 0, left: 0,
-                      width: '400px', height: '400px',
+                      top: '50%', left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: '800px', height: '800px',
                       pointerEvents: 'none',
                     }}
                   >
