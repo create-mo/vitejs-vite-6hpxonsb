@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { VexScore } from './VexScore';
 import type { MusicPiece } from '../data/database';
-import type { PlayEffect } from '../hooks/useAudioPlayer';
 
 interface Props {
   piece: MusicPiece;
@@ -10,15 +9,7 @@ interface Props {
   isPlaying: boolean;
   onTogglePlay: () => void;
   onStop: () => void;
-  effect: PlayEffect;
-  onEffectChange: (e: PlayEffect) => void;
 }
-
-const EFFECTS: { value: PlayEffect; label: string }[] = [
-  { value: 'none',    label: 'Обычно' },
-  { value: 'thirds',  label: 'Терции' },
-  { value: 'arpeggio', label: 'Арпеджио' },
-];
 
 export const FullScreenScore = ({
   piece,
@@ -27,8 +18,6 @@ export const FullScreenScore = ({
   isPlaying,
   onTogglePlay,
   onStop,
-  effect,
-  onEffectChange,
 }: Props) => {
   const [opacity, setOpacity] = useState(0);
 
@@ -96,23 +85,6 @@ export const FullScreenScore = ({
             </button>
           </div>
 
-          {/* Переключатель эффектов */}
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            {EFFECTS.map(({ value, label }) => (
-              <button
-                key={value}
-                onClick={() => { onStop(); onEffectChange(value); }}
-                style={{
-                  ...effectBtnStyle,
-                  background: effect === value ? '#000' : 'transparent',
-                  color: effect === value ? '#fff' : '#000',
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
           <button onClick={handleClose} style={minimalBtnStyle}>
             <svg width="28" height="28" viewBox="0 0 24 24">
               <path
@@ -162,15 +134,4 @@ const minimalBtnStyle = {
   justifyContent: 'center',
   opacity: 0.7,
   transition: 'opacity 0.2s',
-};
-
-const effectBtnStyle = {
-  border: '1px solid #000',
-  borderRadius: '4px',
-  padding: '4px 10px',
-  fontSize: '11px',
-  cursor: 'pointer',
-  transition: 'all 0.15s',
-  fontFamily: 'inherit',
-  letterSpacing: '0.5px',
 };

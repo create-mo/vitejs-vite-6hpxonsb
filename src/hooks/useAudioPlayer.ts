@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import type { MusicPiece } from '../data/database';
 
 export type Era = 'Baroque' | 'Classical' | 'Romantic' | '20th Century' | 'Contemporary';
-export type PlayEffect = 'none' | 'thirds' | 'arpeggio';
+export type PlayEffect = 'none';  // Removed 'thirds' | 'arpeggio' — using only 'none'
 export type PlaybackState = 'stopped' | 'playing' | 'paused';
 
 interface ADSR {
@@ -28,6 +28,25 @@ const FLAT_MAP: Record<string, string> = {
 };
 const NOTE_NAMES = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
 
+// Duration mapping: note value → beats (relative to whole note = 4 beats)
+const DURATION_MAP: Record<string, number> = {
+  'w': 4,       // whole note
+  'h': 2,       // half note
+  'q': 1,       // quarter note
+  '8': 0.5,     // eighth note
+  '16': 0.25,   // sixteenth note
+  '32': 0.125,  // thirty-second note
+};
+
+// Reverb parameters per era
+const REVERB_PARAMS: Record<Era, { delayTime: number; feedback: number; dryWet: number }> = {
+  'Baroque': { delayTime: 0.08, feedback: 0.15, dryWet: 0.12 },
+  'Classical': { delayTime: 0.12, feedback: 0.22, dryWet: 0.16 },
+  'Romantic': { delayTime: 0.20, feedback: 0.35, dryWet: 0.22 },
+  '20th Century': { delayTime: 0.06, feedback: 0.12, dryWet: 0.10 },
+  'Contemporary': { delayTime: 0.05, feedback: 0.10, dryWet: 0.08 },
+};
+
 function getFreq(note: string): number {
   const parts = note.toLowerCase().trim().split('/');
   if (parts.length < 2) return 0;
@@ -46,24 +65,53 @@ function playTone(
   startTime: number,
   duration: number,
   adsr: ADSR,
-  gainScale = 1
+  gainScale = 1,
+  withVibrato = false,
+  wetGain?: GainNode
 ) {
   if (freq <= 0 || duration <= 0) return;
 
+  // Main oscillator: sine (warm, vocal-like)
   const osc = ctx.createOscillator();
-  const osc2 = ctx.createOscillator();
   const gain = ctx.createGain();
 
-  osc.type = 'triangle';
-  osc2.type = 'sine';
-
+  osc.type = 'sine';
   osc.frequency.value = freq;
-  osc2.frequency.value = freq * 2;    // октавная гармоника
 
   osc.connect(gain);
-  osc2.connect(gain);
-  gain.connect(ctx.destination);
+  if (wetGain) {
+    gain.connect(ctx.destination);
+    gain.connect(wetGain);
+  } else {
+    gain.connect(ctx.destination);
+  }
 
+  // Second oscillator: weak sawtooth for attack sheen
+  const osc2 = ctx.createOscillator();
+  const gain2 = ctx.createGain();
+  osc2.type = 'sawtooth';
+  osc2.frequency.value = freq;
+  osc2.connect(gain2);
+  if (wetGain) {
+    gain2.connect(ctx.destination);
+    gain2.connect(wetGain);
+  } else {
+    gain2.connect(ctx.destination);
+  }
+
+  // Vibrato (optional, for Romantic/Contemporary)
+  let vibrato: OscillatorNode | null = null;
+  let vibratoGain: GainNode | null = null;
+  if (withVibrato) {
+    vibrato = ctx.createOscillator();
+    vibratoGain = ctx.createGain();
+    vibrato.frequency.value = 5.5;  // Hz
+    vibratoGain.gain.value = freq * 0.005;  // ±0.5% pitch
+    vibrato.connect(vibratoGain);
+    vibratoGain.connect(osc.frequency);
+  }
+
+  // ADSR envelope
   const p = adsr.peak * gainScale;
   const attackEnd = startTime + adsr.attack;
   const decayEnd = attackEnd + adsr.decay;
@@ -76,10 +124,21 @@ function playTone(
   gain.gain.setValueAtTime(p * adsr.sustain, releaseStart);
   gain.gain.linearRampToValueAtTime(0.0001, noteEnd);
 
+  // Sawtooth: weaker, only on attack
+  const sawtooth_peak = adsr.peak * gainScale * 0.08;
+  gain2.gain.setValueAtTime(0, startTime);
+  gain2.gain.linearRampToValueAtTime(sawtooth_peak, startTime + adsr.attack * 0.5);
+  gain2.gain.linearRampToValueAtTime(0, decayEnd);
+  gain2.gain.setValueAtTime(0, releaseStart);
+  gain2.gain.linearRampToValueAtTime(0, noteEnd);
+
   osc.start(startTime);
   osc2.start(startTime);
+  if (vibrato) vibrato.start(startTime + adsr.attack + 0.05);
+
   osc.stop(noteEnd);
   osc2.stop(noteEnd);
+  if (vibrato) vibrato.stop(noteEnd);
 }
 
 function scheduleVoice(
@@ -89,40 +148,56 @@ function scheduleVoice(
   beatTime: number,
   adsr: ADSR,
   gainScale: number,
-  effect: PlayEffect
+  era: Era,
+  wetGain?: GainNode
 ): number {
   let t = startTime;
-  const LEGATO_OVERLAP = 0.05; // 50ms легато для плавности
+  const LEGATO_OVERLAP = 0.05;
 
   for (const measure of measures) {
     const tokens = measure.split(',');
-    const dur = (beatTime * 4) / tokens.length;
+    let beatPosition = 0;
 
     for (const token of tokens) {
       const parts = token.trim().split('/');
+
+      // Check for rest
       if (parts.length < 2 || parts[0].trim() === 'r') {
+        // Parse duration for rests too
+        const durCode = parts[1]?.trim() ?? 'q';
+        const beats = DURATION_MAP[durCode] ?? 1;
+        const dur = beatTime * beats;
         t += dur;
+        beatPosition++;
         continue;
       }
-      const freq = getFreq(parts[0] + '/' + parts[1]);
-      // Добавляем легато: нота начинается чуть раньше, чтобы перекрыться с предыдущей
-      const noteStart = Math.max(startTime, t - LEGATO_OVERLAP);
 
-      if (effect === 'arpeggio') {
-        const third = freq * Math.pow(2, 4 / 12);
-        const fifth = freq * Math.pow(2, 7 / 12);
-        const step = dur / 3;
-        playTone(ctx, freq,  noteStart,        step * 2.2, adsr, gainScale);
-        playTone(ctx, third, noteStart + step,     step * 2.2, adsr, gainScale * 0.8);
-        playTone(ctx, fifth, noteStart + step * 2, step * 2.2, adsr, gainScale * 0.7);
-      } else {
-        playTone(ctx, freq, noteStart, dur, adsr, gainScale);
-        if (effect === 'thirds') {
-          playTone(ctx, freq * Math.pow(2, 4 / 12), noteStart, dur, adsr, gainScale * 0.5);
-        }
+      // Parse duration from token
+      const durCode = parts[2]?.trim() ?? 'q';
+      const beats = DURATION_MAP[durCode] ?? 1;
+      const dur = beatTime * beats;
+
+      const freq = getFreq(parts[0] + '/' + parts[1]);
+      if (freq <= 0) {
+        t += dur;
+        beatPosition++;
+        continue;
       }
 
+      // Legato overlap
+      const noteStart = Math.max(startTime, t - LEGATO_OVERLAP);
+
+      // Accentuation: first beat of measure is 15% louder
+      const accent = beatPosition === 0 ? 1.15 : 1.0;
+      const accentedGainScale = gainScale * accent;
+
+      // Vibrato only for Romantic and Contemporary
+      const withVibrato = era === 'Romantic' || era === 'Contemporary';
+
+      playTone(ctx, freq, noteStart, dur, adsr, accentedGainScale, withVibrato, wetGain);
+
       t += dur;
+      beatPosition++;
     }
   }
 
@@ -133,7 +208,6 @@ export function useAudioPlayer() {
   const ctxRef = useRef<AudioContext | null>(null);
   const timeoutsRef = useRef<number[]>([]);
   const [playbackState, setPlaybackState] = useState<PlaybackState>('stopped');
-  const [effect, setEffect] = useState<PlayEffect>('none');
 
   const stop = () => {
     timeoutsRef.current.forEach(window.clearTimeout);
@@ -154,9 +228,33 @@ export function useAudioPlayer() {
       const beatTime = 60 / piece.tempo;
       const t0 = ctx.currentTime + 0.05;
 
-      // Треббл и бас играют ОДНОВРЕМЕННО с одного t0
-      const trebleEnd = scheduleVoice(ctx, piece.treble, t0, beatTime, adsr, 1.0, effect);
-      scheduleVoice(ctx, piece.bass, t0, beatTime, { ...adsr, peak: adsr.peak * 0.65 }, 0.65, 'none');
+      // Setup reverb (era-dependent)
+      const reverbParams = REVERB_PARAMS[era];
+      const delayNode = ctx.createDelay(0.5);
+      const feedbackGain = ctx.createGain();
+      const dryWetGain = ctx.createGain();
+
+      delayNode.delayTime.value = reverbParams.delayTime;
+      feedbackGain.gain.value = reverbParams.feedback;
+      dryWetGain.gain.value = reverbParams.dryWet;
+
+      delayNode.connect(feedbackGain);
+      feedbackGain.connect(delayNode);
+      delayNode.connect(ctx.destination);
+      dryWetGain.connect(delayNode);
+
+      // Treble and bass play simultaneously
+      const trebleEnd = scheduleVoice(ctx, piece.treble, t0, beatTime, adsr, 1.0, era, dryWetGain);
+      scheduleVoice(
+        ctx,
+        piece.bass,
+        t0,
+        beatTime,
+        { ...adsr, peak: adsr.peak * 0.65 },
+        0.65,
+        era,
+        dryWetGain
+      );
 
       timeoutsRef.current.push(
         window.setTimeout(
@@ -174,5 +272,5 @@ export function useAudioPlayer() {
     }
   };
 
-  return { playbackState, effect, setEffect, togglePlayPause, stop };
+  return { playbackState, togglePlayPause, stop };
 }

@@ -63,7 +63,7 @@ export const ScoreCanvas = () => {
   const [isDragging, setIsDragging] = useState(false);
   const panStartRef = useRef({ scrollLeft: 0, cameraY: 0, mouseX: 0, mouseY: 0 });
 
-  const { playbackState, effect, setEffect, togglePlayPause, stop } = useAudioPlayer();
+  const { playbackState, togglePlayPause, stop } = useAudioPlayer();
   const { composers: dbComposers, loading: dbLoading, error: dbError } = useComposers();
 
   console.log('[ScoreCanvas] Rendering. dbLoading:', dbLoading, 'dbComposers:', dbComposers.length, 'error:', dbError);
@@ -419,8 +419,6 @@ export const ScoreCanvas = () => {
           isPlaying={playbackState === 'playing'}
           onTogglePlay={() => togglePlayPause(fullScreenPiece.piece, fullScreenPiece.era)}
           onStop={stop}
-          effect={effect}
-          onEffectChange={setEffect}
         />
       )}
 

@@ -63,7 +63,7 @@ Contemporary:   { attack: 0.003, decay: 0.03, sustain: 0.22, release: 0.12, peak
 // Timbre: triangle + sine oscillators (sine at 2× freq for harmonic richness)
 ```
 
-## Status (as of 2026-03-13)
+## Status (as of 2026-03-14)
 
 ### ✅ WORKING
 - [x] Supabase connection with 74 composers loaded from DB
@@ -73,20 +73,47 @@ Contemporary:   { attack: 0.003, decay: 0.03, sustain: 0.22, release: 0.12, peak
 - [x] Play effects: none / thirds / arpeggio
 - [x] Composer cards with piece selection and preview
 - [x] Fallback to local DATABASE during Supabase load
+- [x] **Camera centering fixed** — cameraY formula corrected, no drift on zoom
+- [x] **Drag-pan smooth** — panStartRef captures state, no jumping on mousedown
+- [x] **All composers connected** — smartRoadConnect runs unconditionally, no isolated nodes
+- [x] **Compact layout** — all 74 composers fit within screen bounds, organized by era
+- [x] **Clean road design** — simplified S-curve Bezier paths, no spaghetti effect
+- [x] **Keyboard controls** — arrow keys (pan), +/- (zoom)
+- [x] **Mouse drag** — smooth pan on empty space, respects boundaries
 
-### 🐛 BUGS & ISSUES (Priority order)
-1. **Camera not centered** — viewport Y position wrong, composers not in center view
-2. **Composers clustered** — X/Y positions cause overlapping circles, hard to read
-3. **StaveRoad visual bugs** — black dots (notes) overflow outside 5-line staff boundaries
-4. **Fullscreen music notation** — multiple staves overflow page, need scroll/pagination solution
-5. **Audio quality** — lacks polyphony & harmonic richness, sounds thin/synthetic
+### 🔧 LAYOUT PARAMETERS (Final)
+**File: `src/components/ScoreCanvas.tsx`**
+```typescript
+const GRID_X = 900;        // Horizontal spacing (pixels/unit)
+const GRID_Y = 200;        // Vertical spacing (pixels/unit)
+const WORLD_HEIGHT = 1200; // Total vertical space (fits in screen)
+const HORIZON_Y = 600;     // Middle of world (WORLD_HEIGHT / 2)
 
-### 📋 NEXT TASKS (in order)
-1. **Fix camera centering** (useScroll logic in ScoreCanvas)
-2. **Adjust composer positions** (X/Y spacing in database or calculated offsets)
-3. **Fix StaveRoad note positioning** (keep dots inside ±10px of staff line)
-4. **Implement music notation pagination** (split long pieces across pages or zoom)
-5. **Enhance audio synthesis** (add polyphony, better oscillator mix, reverb)
+// ERA vertical distribution (compact, 0–0.6 range)
+const ERA_Y_CENTER = {
+  'Baroque': 0,
+  'Classical': 0.15,
+  'Romantic': 0.3,
+  '20th Century': 0.45,
+  'Contemporary': 0.6,
+};
+
+const CLUSTER_THRESHOLD = 0.3; // X units: composers "simultaneous"
+const CLUSTER_SPREAD = 0.6;    // Horizontal spread within cluster
+const CLUSTER_STEP = 0.4;      // Vertical spacing in cluster
+```
+
+**File: `src/components/StaveRoad.tsx`**
+- Control points at 33% and 67% along path (clean S-curves)
+- 5 parallel staff lines (offsets: ±10, ±5, 0 px)
+- Scattered note dots within ±8 px bounds
+- Proper Bezier tangent/normal calculations for smooth curves
+
+### 📋 NEXT TASKS (optional enhancements)
+1. **Audio quality** — add polyphony, better oscillator mix, reverb
+2. **Fullscreen music notation** — implement scroll/pagination for long pieces
+3. **Mobile responsiveness** — touch drag, viewport scaling
+4. **Visual polish** — composer portraits, road animations on hover
 
 ## Note data population
 
