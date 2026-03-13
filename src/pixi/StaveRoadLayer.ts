@@ -19,7 +19,6 @@ export class StaveRoadLayer extends PIXI.Container {
   private graphics: PIXI.Graphics;
   private graphicsHover: PIXI.Graphics;
   private noteSprites: PIXI.Container;
-  private labels: PIXI.Container;
   private roads: RoadSegment[] = [];
   private hoveredRoadIndex: number | null = null;
 
@@ -37,10 +36,6 @@ export class StaveRoadLayer extends PIXI.Container {
     // Контейнер для нотных точек (для возможности использовать ParticleContainer в будущем)
     this.noteSprites = new PIXI.Container();
     this.addChild(this.noteSprites);
-
-    // Контейнер для лейблов эр
-    this.labels = new PIXI.Container();
-    this.addChild(this.labels);
   }
 
   setHoveredRoad(index: number | null): void {
@@ -81,11 +76,9 @@ export class StaveRoadLayer extends PIXI.Container {
     this.graphics.clear();
     this.graphicsHover.clear();
     this.noteSprites.removeChildren();
-    this.labels.removeChildren();
 
     this.roads.forEach((road, idx) => {
       this.drawStaveRoad(road, idx === this.hoveredRoadIndex);
-      this.addEraLabel(road);
     });
   }
 
@@ -223,37 +216,4 @@ export class StaveRoadLayer extends PIXI.Container {
     }
   }
 
-  /**
-   * Добавляет лейбл эры в середину дороги
-   */
-  private addEraLabel(road: RoadSegment): void {
-    const { startX, startY, endX, endY, endComposer } = road;
-
-    // Позиция в середине дороги
-    const midX = (startX + endX) / 2;
-    const midY = (startY + endY) / 2;
-
-    // Создаем текстовый лейбл
-    const text = new PIXI.Text(endComposer.era, {
-      fontFamily: 'SF Pro Display, Roboto, sans-serif',
-      fontSize: 11,
-      fontWeight: '600' as any,
-      fill: 0xd4af37,
-    });
-
-    text.position.set(midX, midY - 15);
-    text.anchor.set(0.5, 0.5);
-    text.alpha = 0.6;
-
-    // Добавляем фоновый прямоугольник для читаемости
-    const bg = new PIXI.Graphics();
-    const w = text.width;
-    const h = text.height;
-    bg.rect(-w / 2 - 4, -h / 2 - 2, w + 8, h + 4);
-    bg.fill({ color: 0x1a1a1a, alpha: 0.7 });
-    bg.position.set(midX, midY - 15);
-
-    this.labels.addChild(bg);
-    this.labels.addChild(text);
-  }
 }
