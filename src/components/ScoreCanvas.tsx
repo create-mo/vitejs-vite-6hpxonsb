@@ -69,11 +69,11 @@ export const ScoreCanvas = () => {
   // === SMART LAYOUT: распределяем композиторов с умной группировкой ===
   const ERA_ORDER = ['Baroque', 'Classical', 'Romantic', '20th Century', 'Contemporary'];
   const ERA_Y_CENTER: Record<string, number> = {
-    'Baroque': 0,
-    'Classical': 0.3,
-    'Romantic': 0.6,
-    '20th Century': 0.9,
-    'Contemporary': 1.2,
+    'Baroque': 0.5,
+    'Classical': 0.8,
+    'Romantic': 1.1,
+    '20th Century': 1.4,
+    'Contemporary': 1.7,
   };
   const CLUSTER_THRESHOLD = 0.3; // X units (~180px): композиторы "одновременны"
   const CLUSTER_STEP = 0.8;      // Y шаг между стопками (был 0.4)
