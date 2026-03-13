@@ -3,6 +3,7 @@ import * as PIXI from 'pixi.js';
 import { DATABASE, type ComposerNode, type MusicPiece } from '../data/database';
 import { FullScreenScore } from './FullScreenScore';
 import { FloatingPieceCard } from './FloatingPieceCard';
+import { SearchUI } from './SearchUI';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { useComposers } from '../hooks/useComposers';
 import { usePixiCamera } from '../hooks/usePixiCamera';
@@ -11,6 +12,7 @@ import { ERA_REGIONS } from '../lib/eraMap';
 import { smartCityLayout, smartRoadConnect, GRID_X, GRID_Y, WORLD_HEIGHT, HORIZON_Y } from '../utils/layout';
 import { PixiAppManager } from '../pixi/PixiApp';
 import { WorldContainer } from '../pixi/WorldContainer';
+import { SearchEffect } from '../pixi/SearchEffect';
 
 const AsyncImage = ({ src, alt }: { src: string; alt: string }) => {
   const [loaded, setLoaded] = useState(false);
@@ -53,7 +55,9 @@ export const ScoreCanvas = () => {
     era: Era;
   } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
+  const searchEffectRef = useRef<SearchEffect | null>(null);
 
   const { playbackState, togglePlayPause, stop } = useAudioPlayer();
   const { composers: dbComposers, loading: dbLoading, error: dbError } = useComposers();
@@ -81,6 +85,16 @@ export const ScoreCanvas = () => {
       const world = new WorldContainer();
       worldContainerRef.current = world;
       manager.getStage().addChild(world);
+
+      // Инициализируем SearchEffect
+      const searchEffect = new SearchEffect();
+      searchEffectRef.current = searchEffect;
+      manager.getStage().filters = [searchEffect.getFilter()];
+
+      // Добавляем ticker для анимации SearchEffect
+      manager.app.ticker.add(() => {
+        searchEffect.update();
+      });
     };
 
     initPixi();
@@ -90,6 +104,7 @@ export const ScoreCanvas = () => {
         pixiAppRef.current.destroy();
         pixiAppRef.current = null;
         worldContainerRef.current = null;
+        searchEffectRef.current = null;
       }
     };
   }, [canvasContainerRef, pixi]);
@@ -110,6 +125,16 @@ export const ScoreCanvas = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const step = 50;
       const zoomStep = 0.05;
+
+      // Ctrl+K или Cmd+K для открытия поиска
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+        if (searchEffectRef.current) {
+          searchEffectRef.current.activate();
+        }
+        return;
+      }
 
       switch (e.key) {
         case 'ArrowLeft':
@@ -206,6 +231,35 @@ export const ScoreCanvas = () => {
         />
       )}
 
+      {/* Search UI */}
+      <SearchUI
+        composers={rawComposers}
+        isActive={isSearchOpen}
+        onSelect={(composer) => {
+          // Летим к композитору
+          const targetWorld = WorldContainer.getWorldPos(composer);
+          camera.flyTo(targetWorld.x, targetWorld.y, 800);
+
+          // Выделяем композитора
+          setSelectedComposer(composer);
+          if (worldContainerRef.current) {
+            worldContainerRef.current.highlightComposer(composer.id);
+          }
+
+          // Закрываем поиск
+          setIsSearchOpen(false);
+          if (searchEffectRef.current) {
+            searchEffectRef.current.deactivate();
+          }
+        }}
+        onClose={() => {
+          setIsSearchOpen(false);
+          if (searchEffectRef.current) {
+            searchEffectRef.current.deactivate();
+          }
+        }}
+      />
+
       {/* HUD */}
       <div style={{ position: 'fixed', top: 20, left: 30, zIndex: 100, pointerEvents: 'none' }}>
         <h1 style={{ fontSize: '28px', fontWeight: '900', margin: 0, color: '#e5e5e5' }}>🗺️ MUSICAL HERITAGE</h1>
@@ -225,6 +279,40 @@ export const ScoreCanvas = () => {
           </div>
         )}
       </div>
+
+      {/* Search Button */}
+      <button
+        onClick={() => {
+          setIsSearchOpen(true);
+          if (searchEffectRef.current) {
+            searchEffectRef.current.activate();
+          }
+        }}
+        style={{
+          position: 'fixed',
+          top: 20,
+          right: 30,
+          padding: '8px 12px',
+          backgroundColor: '#1a1a1a',
+          border: '1px solid #444',
+          color: '#999',
+          fontSize: '12px',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          zIndex: 100,
+          transition: 'all 0.2s',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = '#d4af37';
+          e.currentTarget.style.color = '#e5e5e5';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = '#444';
+          e.currentTarget.style.color = '#999';
+        }}
+      >
+        ⌘K Search
+      </button>
 
       {/* Zoom Buttons */}
       <div style={{ position: 'fixed', bottom: 30, right: 30, display: 'flex', gap: '10px', zIndex: 100 }}>
