@@ -90,12 +90,32 @@ const buildOffsetPath = (
 };
 
 export const StaveRoad = ({ startX, startY, endX, endY, label }: Props) => {
-  const midX = (startX + endX) / 2;
   const roadId = `road-${Math.floor(startX)}-${Math.floor(endY)}`;
 
+  // Более органичные контрольные точки для красивых кривых
+  // Дороги волнистые и естественные, как на старинных картах
+  const dx = endX - startX;
+  const dy = endY - startY;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+
+  // Боковое смещение для волнистости (зависит от расстояния и угла)
+  const sideOffset = distance * 0.15; // волнистость
+  const controlInfluence = 0.4; // как далеко контрольные точки от линии
+
+  // Нормаль к линии (перпендикуляр)
+  const perpX = -dy / distance;
+  const perpY = dx / distance;
+
+  // Контрольные точки со смещением для естественной волнистости
   const p0: Point = { x: startX, y: startY };
-  const p1: Point = { x: midX, y: startY };
-  const p2: Point = { x: midX, y: endY };
+  const p1: Point = {
+    x: startX + dx * controlInfluence + perpX * sideOffset,
+    y: startY + dy * controlInfluence + perpY * sideOffset
+  };
+  const p2: Point = {
+    x: endX - dx * controlInfluence - perpX * sideOffset,
+    y: endY - dy * controlInfluence - perpY * sideOffset
+  };
   const p3: Point = { x: endX, y: endY };
 
   // Generate SVG path strings for all 5 staff lines (offsets: -10, -5, 0, 5, 10 px)
@@ -164,9 +184,10 @@ export const StaveRoad = ({ startX, startY, endX, endY, label }: Props) => {
           key={i}
           d={pathD}
           stroke="#000"
-          strokeWidth={0.5}
+          strokeWidth={0.6}
           fill="none"
-          opacity={0.4}
+          opacity={0.3}
+          vectorEffect="non-scaling-stroke"
         />
       ))}
 
