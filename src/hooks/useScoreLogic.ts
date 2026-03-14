@@ -98,6 +98,7 @@ export const useScoreLogic = (containerRef: React.RefObject<HTMLDivElement>) => 
 
     const run = async () => {
       try {
+        // @ts-ignore VexFlow types mismatch
         const VF = Vex.Flow || (Vex.default as any)?.Flow || Vex;
         if (!VF || !VF.Factory) throw new Error("VexFlow Error");
 

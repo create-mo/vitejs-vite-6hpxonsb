@@ -17,6 +17,7 @@ export const VexScore = ({ treble, bass, width, limit }: Props) => {
   useEffect(() => {
     if (!ref.current) return;
 
+    // @ts-ignore VexFlow types mismatch
     const VF = Vex.Flow || (Vex.default as any)?.Flow || Vex;
     ref.current.innerHTML = '';
 
