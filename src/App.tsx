@@ -1,10 +1,11 @@
 import { ScoreCanvas } from './components/ScoreCanvas';
+import { ErrorBoundary } from './ErrorBoundary';
 
 function App() {
   return (
-    <div>
+    <ErrorBoundary>
       <ScoreCanvas />
-    </div>
+    </ErrorBoundary>
   );
 }
 
