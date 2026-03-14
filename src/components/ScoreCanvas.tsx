@@ -189,6 +189,26 @@ export const ScoreCanvas = () => {
     setIsDragging(false);
   };
 
+  // Touch support for tablets
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 1) {
+      setIsDragging(true);
+      dragStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - dragStartRef.current.x;
+    const dy = e.touches[0].clientY - dragStartRef.current.y;
+    camera.pan(dx, dy);
+    dragStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
   const getNodeScreenPos = (node: ComposerNode): { x: number; y: number } => {
     return {
       x: node.x * GRID_X + 200,
@@ -198,7 +218,7 @@ export const ScoreCanvas = () => {
 
   return (
     <div style={{
-      height: '100vh',
+      height: '100%',
       background: '#0a0a0a',
       color: '#e5e5e5',
       fontFamily: 'SF Pro Display, Roboto, sans-serif',
@@ -218,6 +238,9 @@ export const ScoreCanvas = () => {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       />
 
       {/* Full Screen Modal */}
