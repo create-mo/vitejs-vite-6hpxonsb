@@ -63,7 +63,6 @@ const buildOffsetPath = (
 ): string => {
   // Sample tangent/normal at key points to offset the path
   const n0 = bezierNormal(bezierTangent(0, p0, p1, p2, p3));
-  const n_mid = bezierNormal(bezierTangent(0.5, p0, p1, p2, p3));
   const n1 = bezierNormal(bezierTangent(1, p0, p1, p2, p3));
 
   // Offset endpoints and control points along the normal at the nearest parameter value

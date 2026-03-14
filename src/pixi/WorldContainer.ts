@@ -1,5 +1,5 @@
 import * as PIXI from 'pixi.js';
-import { ComposerNode } from '../data/database';
+import type { ComposerNode } from '../data/database';
 import { GRID_X, GRID_Y, HORIZON_Y } from '../utils/layout';
 import { EraLayer } from './EraLayer';
 import { StaveRoadLayer } from './StaveRoadLayer';
@@ -69,13 +69,7 @@ export class WorldContainer extends PIXI.Container {
    */
   highlightComposer(composerId: string | null): void {
     this.composerLayer.highlightComposer(composerId);
-    if (composerId) {
-      this.connectionLayer.highlightComposerConnections(composerId,
-        // Получаем composers из стеков (временное решение, нужна рефакторинг)
-      );
-    } else {
-      // this.connectionLayer.clearHighlight(composers);
-    }
+    // Highlighting connections disabled until composers list is available
   }
 
   /**

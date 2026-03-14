@@ -1,5 +1,5 @@
 import * as PIXI from 'pixi.js';
-import { ComposerNode } from '../data/database';
+import type { ComposerNode } from '../data/database';
 import { GRID_X, GRID_Y, HORIZON_Y } from '../utils/layout';
 
 /**

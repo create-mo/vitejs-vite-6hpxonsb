@@ -16,7 +16,6 @@ interface Props {
 
 export const FloatingPieceCard = ({
   piece,
-  composerName,
   era,
   index,
   total,

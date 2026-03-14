@@ -1,5 +1,5 @@
 import * as PIXI from 'pixi.js';
-import { ComposerNode } from '../data/database';
+import type { ComposerNode } from '../data/database';
 import { GRID_X, GRID_Y, HORIZON_Y } from '../utils/layout';
 
 interface ComposerDisplay {
@@ -7,7 +7,6 @@ interface ComposerDisplay {
   container: PIXI.Container;
   dotGraphics: PIXI.Graphics;
   textLabel: PIXI.Text;
-  glowFilter?: PIXI.GlowFilter;
   currentLOD: 'dot' | 'label' | 'portrait';
 }
 
@@ -70,7 +69,7 @@ export class ComposerLayer extends PIXI.Container {
 
     // LOD 2: текстовой label (фамилия + годы)
     const textLabel = new PIXI.Text({
-      text: `${node.label.split(' ').pop()}\n(${node.lifeDates})`,
+      text: `${node.label.split(' ').pop()}\n(${node.life_dates})`,
       style: {
         fontSize: 10,
         fill: 0xe5e5e5,

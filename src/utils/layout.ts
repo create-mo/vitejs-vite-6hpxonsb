@@ -1,4 +1,4 @@
-import { ComposerNode } from '../data/database';
+import type { ComposerNode } from '../data/database';
 import type { Era } from '../hooks/useAudioPlayer';
 
 // Layout параметры (совпадают с дизайном)

@@ -17,7 +17,7 @@ function toComposerNode(db: DBComposer, pieces: DBPiece[]): ComposerNode {
     id: db.id,
     label: db.name,
     era: db.era,
-    lifeDates: db.life_dates ?? '',
+    life_dates: db.life_dates ?? '',
     image: db.image ?? '',
     x: db.x ?? 0,
     y: db.y ?? 0,

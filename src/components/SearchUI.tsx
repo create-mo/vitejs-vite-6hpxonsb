@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Fuse from 'fuse.js';
-import { ComposerNode } from '../data/database';
+import type { ComposerNode } from '../data/database';
 
 interface SearchUIProps {
   composers: ComposerNode[];
@@ -152,7 +152,7 @@ export const SearchUI: React.FC<SearchUIProps> = ({
                   {composer.label}
                 </div>
                 <div style={{ fontSize: '12px', color: '#999' }}>
-                  {composer.era} • {composer.lifeDates}
+                  {composer.era} • {composer.life_dates}
                 </div>
               </button>
             ))}

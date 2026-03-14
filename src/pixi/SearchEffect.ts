@@ -50,7 +50,7 @@ export class SearchEffect {
    */
   private updateSaturation(value: number): void {
     this.currentSaturation = Math.max(0, Math.min(1, value));
-    this.colorMatrix.saturation(this.currentSaturation, false);
+    this.colorMatrix.saturate(this.currentSaturation, false);
   }
 
   /**
