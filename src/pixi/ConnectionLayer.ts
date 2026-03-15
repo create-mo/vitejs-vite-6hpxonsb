@@ -22,7 +22,6 @@ export class ConnectionLayer extends PIXI.Container {
     this.graphics.clear();
 
     composers.forEach((node) => {
-      // Для каждого композитора рисуем связи к его предшественникам
       const fromX = node.x * GRID_X + 200;
       const fromY = HORIZON_Y + node.y * GRID_Y;
 
@@ -30,16 +29,23 @@ export class ConnectionLayer extends PIXI.Container {
         const pred = composers.find((c) => c.id === predId);
         if (!pred) return;
 
-        const toX = pred.x * GRID_X + 200 + 60; // Смещение
+        const toX = pred.x * GRID_X + 200;
         const toY = HORIZON_Y + pred.y * GRID_Y;
 
-        const thickness = 1.5;
-        const color = 0xd4af37; // Золотые линии влияния
-        const alpha = 0.5;
+        const dx = fromX - toX;
+        const dy = fromY - toY;
+
+        // Плавные Bezier «нити» — контрольные точки выходят горизонтально
+        // из обоих узлов, создавая мягкую S-кривую (стиль «золотые нити»)
+        const tension = 0.45;
+        const cp1x = toX + dx * tension;
+        const cp1y = toY;
+        const cp2x = fromX - dx * tension;
+        const cp2y = fromY;
 
         this.graphics.moveTo(toX, toY);
-        this.graphics.lineTo(fromX, fromY);
-        this.graphics.stroke({ color, width: thickness, alpha });
+        this.graphics.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, fromX, fromY);
+        this.graphics.stroke({ color: 0xd4af37, width: 1.5, alpha: 0.5 });
       });
     });
   }
@@ -61,24 +67,18 @@ export class ConnectionLayer extends PIXI.Container {
       const toX = node.x * GRID_X + 200 + 60;
       const toY = HORIZON_Y + node.y * GRID_Y;
 
-      // Выделяем связи к целевому узлу (яркие золотые)
+      const dx = fromX - toX;
+      const cp1x = toX + dx * 0.45;
+      const cp2x = fromX - dx * 0.45;
+
       if (node.id === composerId || node.predecessors.includes(composerId)) {
-        const thickness = 2.5;
-        const color = 0xd4af37; // Gold
-        const alpha = 0.7;
-
         this.graphics.moveTo(toX, toY);
-        this.graphics.lineTo(fromX, fromY);
-        this.graphics.stroke({ color, width: thickness, alpha });
+        this.graphics.bezierCurveTo(cp1x, toY, cp2x, fromY, fromX, fromY);
+        this.graphics.stroke({ color: 0xd4af37, width: 2.5, alpha: 0.8 });
       } else {
-        // Остальные связи становятся более прозрачными
-        const thickness = 1;
-        const color = 0xd4af37; // Золотой
-        const alpha = 0.15;
-
         this.graphics.moveTo(toX, toY);
-        this.graphics.lineTo(fromX, fromY);
-        this.graphics.stroke({ color, width: thickness, alpha });
+        this.graphics.bezierCurveTo(cp1x, toY, cp2x, fromY, fromX, fromY);
+        this.graphics.stroke({ color: 0xd4af37, width: 1.0, alpha: 0.12 });
       }
     });
   }

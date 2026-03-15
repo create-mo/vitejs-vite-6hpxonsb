@@ -1,13 +1,11 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
 import * as PIXI from 'pixi.js';
-import { DATABASE, type ComposerNode, type MusicPiece } from '../data/database';
-import { FullScreenScore } from './FullScreenScore';
-import { FloatingPieceCard } from './FloatingPieceCard';
+import { DATABASE, type ComposerNode } from '../data/database';
+import { AcousticLens } from './AcousticLens';
 import { SearchUI } from './SearchUI';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { useComposers } from '../hooks/useComposers';
 import { usePixiCamera } from '../hooks/usePixiCamera';
-import type { Era } from '../hooks/useAudioPlayer';
 import { smartCityLayout, smartRoadConnect, GRID_X, GRID_Y, HORIZON_Y } from '../utils/layout';
 import { PixiAppManager } from '../pixi/PixiApp';
 import { WorldContainer } from '../pixi/WorldContainer';
@@ -16,7 +14,7 @@ import { SearchEffect } from '../pixi/SearchEffect';
 const AsyncImage = ({ src, alt }: { src: string; alt: string }) => {
   const [loaded, setLoaded] = useState(false);
   return (
-    <div style={{ width: '100%', height: '100%', background: '#1a1a1a', position: 'relative' }}>
+    <div style={{ width: '100%', height: '100%', position: 'relative', background: 'transparent' }}>
       <img
         src={src}
         alt={alt}
@@ -24,22 +22,39 @@ const AsyncImage = ({ src, alt }: { src: string; alt: string }) => {
         style={{
           width: '100%', height: '100%',
           objectFit: 'cover',
-          filter: 'grayscale(100%) contrast(120%) brightness(1.1)',
+          filter: 'grayscale(100%) contrast(130%) brightness(0.95)',
           opacity: loaded ? 1 : 0,
-          transition: 'opacity 0.5s ease',
+          transition: 'opacity 0.6s ease',
         }}
       />
-      {!loaded && (
-        <div style={{
-          position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)',
-          fontSize: '10px', color: '#555',
-        }}>
-          ...
-        </div>
-      )}
     </div>
   );
+};
+
+// Цвета свечения по эпохам
+const ERA_GLOW: Record<string, string> = {
+  'Baroque':       '244, 164, 96',
+  'Classical':     '135, 206, 235',
+  'Romantic':      '212, 105, 95',
+  '20th Century':  '169, 169, 169',
+  'Contemporary':  '255, 215, 0',
+};
+
+// Атмосфера фона по текущей X позиции камеры
+function getEraAtCamera(worldX: number): string {
+  if (worldX < 4500) return 'Baroque';
+  if (worldX < 7200) return 'Classical';
+  if (worldX < 10800) return 'Romantic';
+  if (worldX < 12800) return '20th Century';
+  return 'Contemporary';
+}
+
+const ERA_ATMOSPHERE: Record<string, string> = {
+  'Baroque':       'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(55,28,5,0.35) 0%, transparent 70%)',
+  'Classical':     'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(8,18,42,0.35)  0%, transparent 70%)',
+  'Romantic':      'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(50,10,10,0.40) 0%, transparent 70%)',
+  '20th Century':  'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(14,14,18,0.30) 0%, transparent 70%)',
+  'Contemporary':  'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(28,22,4,0.35)  0%, transparent 70%)',
 };
 
 export const ScoreCanvas = () => {
@@ -48,11 +63,6 @@ export const ScoreCanvas = () => {
   const [pixi, setPixi] = useState<PIXI.Application | null>(null);
   const [selectedComposer, setSelectedComposer] = useState<ComposerNode | null>(null);
   const [playingPieceId, setPlayingPieceId] = useState<string | null>(null);
-  const [fullScreenPiece, setFullScreenPiece] = useState<{
-    piece: MusicPiece;
-    composer: string;
-    era: Era;
-  } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [hoveredComposerId, setHoveredComposerId] = useState<string | null>(null);
@@ -229,7 +239,7 @@ export const ScoreCanvas = () => {
       overflow: 'hidden',
       position: 'relative',
     }}>
-      {/* PixiJS Canvas */}
+      {/* PixiJS Canvas — размываем когда открыта Acoustic Lens */}
       <div
         ref={canvasContainerRef}
         id="pixi-canvas-container"
@@ -238,6 +248,8 @@ export const ScoreCanvas = () => {
           width: '100%',
           height: '100%',
           cursor: isDragging ? 'grabbing' : 'grab',
+          filter: selectedComposer ? 'blur(40px) brightness(0.25)' : 'none',
+          transition: 'filter 0.6s ease',
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -248,15 +260,36 @@ export const ScoreCanvas = () => {
         onTouchEnd={handleTouchEnd}
       />
 
-      {/* Full Screen Modal */}
-      {fullScreenPiece && (
-        <FullScreenScore
-          piece={fullScreenPiece.piece}
-          composerName={fullScreenPiece.composer}
-          onClose={() => setFullScreenPiece(null)}
-          isPlaying={playbackState === 'playing'}
-          onTogglePlay={() => togglePlayPause(fullScreenPiece.piece, fullScreenPiece.era)}
+      {/* Era atmosphere overlay */}
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          pointerEvents: 'none',
+          zIndex: 1,
+          background: ERA_ATMOSPHERE[getEraAtCamera(camera.camera.x)],
+          transition: 'background 1.4s ease',
+        }}
+      />
+
+      {/* Acoustic Lens — полноэкранный режим просмотра произведений */}
+      {selectedComposer && (
+        <AcousticLens
+          composer={selectedComposer}
+          onClose={() => {
+            setSelectedComposer(null);
+            stop();
+            if (worldContainerRef.current) {
+              worldContainerRef.current.highlightComposer(null);
+            }
+          }}
+          onPlayPiece={(piece, era) => {
+            setPlayingPieceId(piece.id);
+            togglePlayPause(piece, era);
+          }}
           onStop={stop}
+          playingPieceId={playingPieceId}
+          isPlaying={playbackState === 'playing'}
         />
       )}
 
@@ -359,12 +392,16 @@ export const ScoreCanvas = () => {
         </button>
       </div>
 
-      {/* HTML Overlay for Interactive Elements */}
+      {/* HTML Overlay — Glassmorphism composer nodes */}
       {rawComposers.map((node) => {
-        const pos = getNodeScreenPos(node);
+        const pos        = getNodeScreenPos(node);
         const isSelected = selectedComposer?.id === node.id;
-        const circleSize = Math.round(Math.max(24, 70 * camera.camera.scale));
-        const half = circleSize / 2;
+        const isHovered  = hoveredComposerId === node.id;
+        const circleSize = Math.round(Math.max(22, 68 * camera.camera.scale));
+        const half       = circleSize / 2;
+        const glow       = ERA_GLOW[node.era] ?? '200,200,200';
+        const labelSize  = Math.max(9, Math.round(12 * camera.camera.scale));
+        const dateSize   = Math.max(8, Math.round(10 * camera.camera.scale));
 
         return (
           <div
@@ -374,25 +411,30 @@ export const ScoreCanvas = () => {
               left: pos.x - half,
               top: pos.y - half,
               pointerEvents: 'auto',
+              // Dim others when a composer is hovered (not selected — selection opens Lens)
+              opacity: hoveredComposerId && !isHovered ? 0.45 : 1,
+              transition: 'opacity 0.3s ease',
             }}
           >
-            {/* Composer Circle */}
+            {/* Glassmorphism portrait */}
             <div
               style={{
                 width: `${circleSize}px`,
                 height: `${circleSize}px`,
                 borderRadius: '50%',
                 overflow: 'hidden',
-                border: isSelected ? '3px solid #d4af37' : '1px solid #444',
-                background: '#1a1a1a',
+                border: `1px solid rgba(${glow}, ${isHovered ? 0.35 : 0.1})`,
+                background: 'rgba(10, 8, 6, 0.25)',
+                backdropFilter: 'blur(4px)',
+                WebkitBackdropFilter: 'blur(4px)',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease',
+                transition: 'all 0.35s ease',
                 boxShadow: isSelected
-                  ? '0 0 20px rgba(212, 175, 55, 0.5)'
-                  : hoveredComposerId === node.id
-                  ? '0 0 12px rgba(212, 175, 55, 0.3)'
-                  : 'none',
-                transform: hoveredComposerId === node.id ? 'scale(1.12)' : 'scale(1)',
+                  ? `0 0 28px rgba(${glow}, 0.65), 0 0 8px rgba(${glow}, 0.3)`
+                  : isHovered
+                  ? `0 0 20px rgba(${glow}, 0.5), 0 0 5px rgba(${glow}, 0.2)`
+                  : `0 0 6px rgba(0,0,0,0.6)`,
+                transform: isHovered ? 'scale(1.10)' : 'scale(1)',
               }}
               onClick={() => {
                 const newSelected = isSelected ? null : node;
@@ -408,81 +450,41 @@ export const ScoreCanvas = () => {
               <AsyncImage src={node.image} alt={node.label} />
             </div>
 
-            {/* Composer Name + Life Dates */}
+            {/* Парящее имя — без фоновой плашки */}
             <div
               style={{
-                marginTop: '8px',
-                fontSize: '12px',
-                fontWeight: '600',
+                marginTop: '9px',
+                fontSize: `${labelSize}px`,
+                fontWeight: '300',
+                fontFamily: 'SF Pro Display, Helvetica Neue, Arial, sans-serif',
                 textAlign: 'center',
-                color: '#e5e5e5',
-                background: 'rgba(10, 10, 10, 0.8)',
-                padding: '4px 8px',
-                borderRadius: '4px',
+                color: `rgba(220, 215, 205, ${isHovered ? 0.98 : 0.80})`,
+                letterSpacing: '0.10em',
+                textShadow: '0 1px 6px rgba(0,0,0,0.8)',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.3s ease',
               }}
             >
               {node.label}
             </div>
+
+            {/* Парящие даты — без фоновой плашки */}
             {node.life_dates && (
               <div
                 style={{
-                  marginTop: '4px',
-                  fontSize: '10px',
-                  fontWeight: '400',
+                  marginTop: '3px',
+                  fontSize: `${dateSize}px`,
+                  fontWeight: '300',
+                  fontFamily: 'SF Pro Display, Helvetica Neue, Arial, sans-serif',
                   textAlign: 'center',
-                  color: '#888',
-                  background: 'rgba(10, 10, 10, 0.6)',
-                  padding: '2px 6px',
-                  borderRadius: '3px',
+                  color: `rgba(${glow}, ${isHovered ? 0.6 : 0.35})`,
+                  letterSpacing: '0.18em',
+                  textShadow: '0 1px 4px rgba(0,0,0,0.9)',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.3s ease',
                 }}
               >
                 {node.life_dates}
-              </div>
-            )}
-
-            {/* Floating Piece Cards */}
-            {isSelected && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  width: '800px',
-                  height: '800px',
-                  pointerEvents: 'none',
-                }}
-              >
-                {node.pieces.map((piece, idx) => (
-                  <div
-                    key={piece.id}
-                    style={{
-                      position: 'absolute',
-                      pointerEvents: 'auto',
-                    }}
-                  >
-                    <FloatingPieceCard
-                      piece={piece}
-                      composerName={node.label}
-                      era={node.era as Era}
-                      index={idx}
-                      total={node.pieces.length}
-                      onExpand={() => {
-                        setFullScreenPiece({
-                          piece,
-                          composer: node.label,
-                          era: node.era as Era,
-                        });
-                      }}
-                      isPlaying={playingPieceId === piece.id && playbackState === 'playing'}
-                      onTogglePlay={() => {
-                        setPlayingPieceId(piece.id);
-                        togglePlayPause(piece, node.era as Era);
-                      }}
-                      onStop={stop}
-                    />
-                  </div>
-                ))}
               </div>
             )}
           </div>
