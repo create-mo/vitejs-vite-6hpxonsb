@@ -78,9 +78,8 @@ export const ScoreCanvas = () => {
       const manager = new PixiAppManager();
       await manager.init('pixi-canvas-container');
       pixiAppRef.current = manager;
-      setPixi(manager.app);
 
-      // Добавляем world container
+      // Добавляем world container ДО setPixi, чтобы update effect видел его
       const world = new WorldContainer();
       worldContainerRef.current = world;
       manager.getStage().addChild(world);
@@ -90,10 +89,12 @@ export const ScoreCanvas = () => {
       searchEffectRef.current = searchEffect;
       manager.getStage().filters = [searchEffect.getFilter()];
 
-      // Добавляем ticker для анимации SearchEffect
       manager.app.ticker.add(() => {
         searchEffect.update();
       });
+
+      // setPixi в самом конце — триггерит update effect когда всё готово
+      setPixi(manager.app);
     };
 
     initPixi();
@@ -233,6 +234,7 @@ export const ScoreCanvas = () => {
         ref={canvasContainerRef}
         id="pixi-canvas-container"
         style={{
+          position: 'relative',
           width: '100%',
           height: '100%',
           cursor: isDragging ? 'grabbing' : 'grab',
