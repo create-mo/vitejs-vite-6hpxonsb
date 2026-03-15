@@ -113,13 +113,12 @@ export const ScoreCanvas = () => {
   // Камера
   const camera = usePixiCamera(pixi);
 
-  // Обновляем рендер при изменении данных или zoom
+  // Обновляем рендер при изменении данных, zoom или инициализации PixiJS
   useEffect(() => {
     if (!worldContainerRef.current || rawComposers.length === 0) return;
-
-    // Обновляем все слои мира
     worldContainerRef.current.update(rawComposers, camera.camera.scale);
-  }, [rawComposers, camera.camera.scale]);
+  // pixi включён в deps чтобы update запустился после инициализации PixiJS
+  }, [rawComposers, camera.camera.scale, pixi]);
 
   // Keyboard control
   useEffect(() => {
@@ -210,9 +209,13 @@ export const ScoreCanvas = () => {
   };
 
   const getNodeScreenPos = (node: ComposerNode): { x: number; y: number } => {
+    const worldX = node.x * GRID_X + 200;
+    const worldY = HORIZON_Y + node.y * GRID_Y;
+    const screenCenterX = window.innerWidth / 2;
+    const screenCenterY = window.innerHeight / 2;
     return {
-      x: node.x * GRID_X + 200,
-      y: HORIZON_Y + node.y * GRID_Y,
+      x: screenCenterX + (worldX - camera.camera.x) * camera.camera.scale,
+      y: screenCenterY + (worldY - camera.camera.y) * camera.camera.scale,
     };
   };
 
@@ -358,22 +361,24 @@ export const ScoreCanvas = () => {
       {rawComposers.map((node) => {
         const pos = getNodeScreenPos(node);
         const isSelected = selectedComposer?.id === node.id;
+        const circleSize = Math.round(Math.max(24, 70 * camera.camera.scale));
+        const half = circleSize / 2;
 
         return (
           <div
             key={node.id}
             style={{
               position: 'fixed',
-              left: pos.x - 40,
-              top: pos.y - 40,
+              left: pos.x - half,
+              top: pos.y - half,
               pointerEvents: 'auto',
             }}
           >
             {/* Composer Circle */}
             <div
               style={{
-                width: '70px',
-                height: '70px',
+                width: `${circleSize}px`,
+                height: `${circleSize}px`,
                 borderRadius: '50%',
                 overflow: 'hidden',
                 border: isSelected ? '3px solid #d4af37' : '1px solid #444',

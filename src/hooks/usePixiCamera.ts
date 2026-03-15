@@ -8,9 +8,12 @@ export interface CameraState {
   scale: number;
 }
 
+// HORIZON_Y = 600 (WORLD_HEIGHT / 2) — центр мира по вертикали
+const INITIAL_CAMERA: CameraState = { x: 400, y: 600, scale: 0.6 };
+
 export function usePixiCamera(app: PIXI.Application | null) {
-  const [camera, setCamera] = useState<CameraState>({ x: 0, y: 0, scale: 0.6 });
-  const cameraRef = useRef<CameraState>({ x: 0, y: 0, scale: 0.6 });
+  const [camera, setCamera] = useState<CameraState>(INITIAL_CAMERA);
+  const cameraRef = useRef<CameraState>({ ...INITIAL_CAMERA });
   const isAnimatingRef = useRef(false);
   const animationStartRef = useRef<{ startTime: number; duration: number; from: CameraState; to: CameraState } | null>(null);
 
