@@ -5,15 +5,17 @@ import type { Era } from '../hooks/useAudioPlayer';
 export const GRID_X = 900;        // Пиксели на единицу X (время)
 export const GRID_Y = 200;        // Пиксели на единицу Y
 export const WORLD_HEIGHT = 1200; // Весь контент должен помещаться
-export const HORIZON_Y = WORLD_HEIGHT / 2;
+export const HORIZON_Y = 100;     // Верхняя граница (эпохи идут вниз: 100, 300, 500, 700, 900)
 
 const ERA_ORDER: Era[] = ['Baroque', 'Classical', 'Romantic', '20th Century', 'Contemporary'];
-const ERA_Y_CENTER: Record<Era, number> = {
+// Y-центры эпох в единицах GRID_Y (1 ед. = 200px)
+// Baroque: worldY=100, Classical: 300, Romantic: 500, 20th: 700, Contemporary: 900
+export const ERA_Y_CENTER: Record<Era, number> = {
   'Baroque': 0,
-  'Classical': 0.15,
-  'Romantic': 0.3,
-  '20th Century': 0.45,
-  'Contemporary': 0.6,
+  'Classical': 1,
+  'Romantic': 2,
+  '20th Century': 3,
+  'Contemporary': 4,
 };
 
 const CLUSTER_THRESHOLD = 0.3; // X units: композиторы "одновременны"

@@ -33,12 +33,9 @@ export class ConnectionLayer extends PIXI.Container {
         const toX = pred.x * GRID_X + 200 + 60; // Смещение
         const toY = HORIZON_Y + pred.y * GRID_Y;
 
-        // Рисуем простую линию (пока без strength-информации,
-        // так как в текущей схеме данных predecessors — это просто массив ID)
-        // Для будущих версий можно добавить graph_connections структуру
         const thickness = 1.5;
-        const color = 0x888888; // Серый цвет для дорог предков
-        const alpha = 0.3;
+        const color = 0xd4af37; // Золотые линии влияния
+        const alpha = 0.5;
 
         this.graphics.moveTo(toX, toY);
         this.graphics.lineTo(fromX, fromY);
@@ -76,7 +73,7 @@ export class ConnectionLayer extends PIXI.Container {
       } else {
         // Остальные связи становятся более прозрачными
         const thickness = 1;
-        const color = 0x666666; // Тёмный серый
+        const color = 0xd4af37; // Золотой
         const alpha = 0.15;
 
         this.graphics.moveTo(toX, toY);

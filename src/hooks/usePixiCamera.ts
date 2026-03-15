@@ -8,8 +8,8 @@ export interface CameraState {
   scale: number;
 }
 
-// HORIZON_Y = 600 (WORLD_HEIGHT / 2) — центр мира по вертикали
-const INITIAL_CAMERA: CameraState = { x: 400, y: 600, scale: 0.6 };
+// Baroque worldY=100, Contemporary worldY=900 — показываем все эпохи сразу
+const INITIAL_CAMERA: CameraState = { x: 400, y: 500, scale: 0.5 };
 
 export function usePixiCamera(app: PIXI.Application | null) {
   const [camera, setCamera] = useState<CameraState>(INITIAL_CAMERA);
