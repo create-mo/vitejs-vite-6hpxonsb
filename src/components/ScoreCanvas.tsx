@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import * as PIXI from 'pixi.js';
 import { DATABASE, type ComposerNode, type MusicPiece } from '../data/database';
 import { FullScreenScore } from './FullScreenScore';
@@ -63,17 +63,16 @@ export const ScoreCanvas = () => {
   const { composers: dbComposers, loading: dbLoading, error: dbError } = useComposers();
 
   // Используем Supabase если загрузилось, иначе локальную базу
-  let rawComposers = dbLoading || dbComposers.length === 0 ? DATABASE : dbComposers;
-
-  // Применяем layout алгоритмы
-  rawComposers = smartCityLayout(rawComposers);
-  rawComposers = smartRoadConnect(rawComposers);
+  const rawComposers = useMemo(() => {
+    const base = dbLoading || dbComposers.length === 0 ? DATABASE : dbComposers;
+    return smartRoadConnect(smartCityLayout(base));
+  }, [dbLoading, dbComposers]);
 
   const worldContainerRef = useRef<WorldContainer | null>(null);
 
   // Инициализация PixiJS
   useEffect(() => {
-    if (!canvasContainerRef.current || pixi) return;
+    if (!canvasContainerRef.current) return;
 
     const initPixi = async () => {
       const manager = new PixiAppManager();
@@ -105,9 +104,11 @@ export const ScoreCanvas = () => {
         pixiAppRef.current = null;
         worldContainerRef.current = null;
         searchEffectRef.current = null;
+        setPixi(null);
       }
     };
-  }, [canvasContainerRef, pixi]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Камера
   const camera = usePixiCamera(pixi);
