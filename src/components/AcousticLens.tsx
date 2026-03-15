@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import type { ComposerNode, MusicPiece } from '../data/database';
 import type { Era } from '../hooks/useAudioPlayer';
+import { FullScreenScore } from './FullScreenScore';
 
 interface AcousticLensProps {
   composer: ComposerNode;
@@ -53,6 +54,7 @@ export const AcousticLens: React.FC<AcousticLensProps> = ({
 
   const [focusedPiece, setFocusedPiece] = useState<MusicPiece | null>(null);
   const [titleVisible, setTitleVisible] = useState(false);
+  const [scoreOpen, setScoreOpen] = useState(false);
 
   const pieces = composer.pieces;
 
@@ -241,6 +243,26 @@ export const AcousticLens: React.FC<AcousticLensProps> = ({
 
   const isCurrentlyPlaying = focusedPiece?.id === playingPieceId && isPlaying;
 
+  // ─── Styles ─────────────────────────────────────────────────────────────────
+
+  function lensButtonStyle(active: boolean): React.CSSProperties {
+    return {
+      width: '44px',
+      height: '44px',
+      background: active ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.06)',
+      border: `1px solid ${active ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.12)'}`,
+      borderRadius: '50%',
+      color: active ? '#d4af37' : 'rgba(229,224,210,0.8)',
+      fontSize: '15px',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: 'all 0.2s ease',
+      backdropFilter: 'blur(8px)',
+    };
+  }
+
   return (
     <div
       style={{
@@ -368,49 +390,51 @@ export const AcousticLens: React.FC<AcousticLensProps> = ({
         </div>
       )}
 
-      {/* Play / Stop кнопка */}
+      {/* Play / Stop + Open Score кнопки */}
       {focusedPiece && (
-        <button
-          onClick={handlePlay}
-          style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '44px',
-            height: '44px',
-            background: isCurrentlyPlaying
-              ? 'rgba(212, 175, 55, 0.15)'
-              : 'rgba(255, 255, 255, 0.06)',
-            border: `1px solid ${isCurrentlyPlaying
-              ? 'rgba(212, 175, 55, 0.5)'
-              : 'rgba(255, 255, 255, 0.12)'}`,
-            borderRadius: '50%',
-            color: isCurrentlyPlaying ? '#d4af37' : 'rgba(229, 224, 210, 0.8)',
-            fontSize: '14px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.2s ease',
-            backdropFilter: 'blur(8px)',
-            zIndex: 10,
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(212, 175, 55, 0.2)';
-            e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.6)';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = isCurrentlyPlaying
-              ? 'rgba(212, 175, 55, 0.15)'
-              : 'rgba(255, 255, 255, 0.06)';
-            e.currentTarget.style.borderColor = isCurrentlyPlaying
-              ? 'rgba(212, 175, 55, 0.5)'
-              : 'rgba(255, 255, 255, 0.12)';
-          }}
-        >
-          {isCurrentlyPlaying ? '■' : '▶'}
-        </button>
+        <div style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'center',
+          zIndex: 10,
+        }}>
+          {/* Play/Stop */}
+          <button
+            onClick={handlePlay}
+            style={lensButtonStyle(isCurrentlyPlaying)}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(212,175,55,0.2)'; e.currentTarget.style.borderColor = 'rgba(212,175,55,0.6)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = isCurrentlyPlaying ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = isCurrentlyPlaying ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.12)'; }}
+          >
+            {isCurrentlyPlaying ? '■' : '▶'}
+          </button>
+
+          {/* Open Score — показать ноты VexFlow */}
+          <button
+            onClick={() => setScoreOpen(true)}
+            title="Open score"
+            style={lensButtonStyle(false)}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(212,175,55,0.15)'; e.currentTarget.style.borderColor = 'rgba(212,175,55,0.5)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; }}
+          >
+            𝄞
+          </button>
+        </div>
+      )}
+
+      {/* FullScreenScore — VexFlow партитура */}
+      {scoreOpen && focusedPiece && (
+        <FullScreenScore
+          piece={focusedPiece}
+          composerName={composer.label}
+          onClose={() => setScoreOpen(false)}
+          isPlaying={isPlaying && playingPieceId === focusedPiece.id}
+          onTogglePlay={() => onPlayPiece(focusedPiece, composer.era as Era)}
+          onStop={onStop}
+        />
       )}
 
       {/* Счётчик произведений */}
